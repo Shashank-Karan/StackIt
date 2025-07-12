@@ -55,7 +55,7 @@ export function QuestionCard({ question, onClick }: QuestionCardProps) {
             <div className="text-center">
               <div className="flex items-center space-x-1 text-sm text-gray-600">
                 <MessageCircle className="h-4 w-4" />
-                <span className="font-medium">{question._count.answers}</span>
+                <span className="font-medium">{question.answers?.length || 0}</span>
               </div>
               <div className="text-xs text-gray-500">answers</div>
             </div>

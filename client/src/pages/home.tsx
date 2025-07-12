@@ -64,6 +64,7 @@ export default function Home() {
     queryKey: [`/api/questions/${selectedQuestion?.id}`],
     enabled: !!selectedQuestion?.id && typeof selectedQuestion.id === 'number',
     retry: false,
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Handle errors

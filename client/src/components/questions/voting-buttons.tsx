@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
@@ -11,12 +11,13 @@ interface VotingButtonsProps {
   itemId: number;
   itemType: 'question' | 'answer';
   votes: number;
-  onVoteSuccess: () => void;
+  onVoteSuccess?: () => void;
 }
 
 export function VotingButtons({ itemId, itemType, votes, onVoteSuccess }: VotingButtonsProps) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const voteMutation = useMutation({
     mutationFn: async (voteType: 'up' | 'down') => {
@@ -24,10 +25,23 @@ export function VotingButtons({ itemId, itemType, votes, onVoteSuccess }: Voting
         voteType,
         [itemType === 'question' ? 'questionId' : 'answerId']: itemId,
       };
-      await apiRequest('POST', '/api/votes', voteData);
+      const response = await apiRequest('POST', '/api/votes', voteData);
+      return response.json();
     },
     onSuccess: () => {
-      onVoteSuccess();
+      // Invalidate all relevant queries to ensure real-time updates
+      queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/questions/${itemId}`] });
+      
+      // Call the success callback if provided
+      if (onVoteSuccess) {
+        onVoteSuccess();
+      }
+      
+      toast({
+        title: "Success",
+        description: "Vote recorded successfully",
+      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -63,27 +77,29 @@ export function VotingButtons({ itemId, itemType, votes, onVoteSuccess }: Voting
   };
 
   return (
-    <div className="flex flex-col items-center space-y-2">
+    <div className="flex flex-col items-center space-y-1">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => handleVote('up')}
         disabled={voteMutation.isPending}
-        className="p-2 hover:bg-green-100 hover:text-green-700"
+        className="p-2 hover:bg-green-100 hover:text-green-700 transition-colors"
       >
         <ChevronUp className="h-6 w-6" />
       </Button>
       
-      <span className="text-lg font-semibold text-gray-900">
-        {votes}
-      </span>
+      <div className="text-center px-3 py-1 bg-gray-100 rounded-md min-w-[40px]">
+        <span className="text-lg font-bold text-gray-900">
+          {votes}
+        </span>
+      </div>
       
       <Button
         variant="ghost"
         size="sm"
         onClick={() => handleVote('down')}
         disabled={voteMutation.isPending}
-        className="p-2 hover:bg-red-100 hover:text-red-700"
+        className="p-2 hover:bg-red-100 hover:text-red-700 transition-colors"
       >
         <ChevronDown className="h-6 w-6" />
       </Button>
