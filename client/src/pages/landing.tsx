@@ -91,21 +91,7 @@ export default function Landing() {
               </Button>
             </div>
             
-            {/* Stats */}
-            <div className="flex justify-center items-center space-x-8 pt-12 text-sm text-muted-foreground">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">10K+</div>
-                <div>Questions Answered</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">5K+</div>
-                <div>Active Developers</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">AI</div>
-                <div>Powered Support</div>
-              </div>
-            </div>
+
           </div>
         </div>
       </main>
