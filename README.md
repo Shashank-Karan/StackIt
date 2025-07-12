@@ -10,6 +10,8 @@
 | Roshan Yadav        | roshanyadav@amityonline.com   |
 
 
+<video controls src="domo video.mp4" title="Title"></video>
+
 # StackIt - AI-Powered Q&A Platform
 
 [![Built with Replit](https://img.shields.io/badge/Built%20with-Replit-orange)](https://replit.com)
