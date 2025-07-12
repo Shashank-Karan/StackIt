@@ -319,7 +319,7 @@ export default function Landing() {
               Empowering developers worldwide with AI-assisted knowledge sharing
             </p>
             <p className="text-sm text-slate-500">
-              &copy; 2025 StackIt. Built with ❤️ for the developer community.
+              &copy; 2025 StackIt.
             </p>
           </div>
         </div>
