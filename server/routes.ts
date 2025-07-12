@@ -1,20 +1,66 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated, registerUser, loginUser } from "./auth";
+import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema, registerSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  await setupAuth(app);
+  setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/register', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const userData = registerSchema.parse(req.body);
+      const user = await registerUser(userData);
+      
+      // Set session
+      req.session!.user = user;
+      
+      res.json({ user: { ...user, password: undefined } });
+    } catch (error: any) {
+      console.error("Error registering user:", error);
+      res.status(400).json({ message: error.message || "Failed to register user" });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const credentials = loginSchema.parse(req.body);
+      const user = await loginUser(credentials);
+      
+      if (!user) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+      
+      // Set session
+      req.session!.user = user;
+      
+      res.json({ user: { ...user, password: undefined } });
+    } catch (error: any) {
+      console.error("Error logging in user:", error);
+      res.status(400).json({ message: error.message || "Failed to login" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    req.session!.destroy((err) => {
+      if (err) {
+        console.error("Error destroying session:", err);
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  app.get('/api/auth/user', async (req, res) => {
+    try {
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      res.json({ ...user, password: undefined });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -67,13 +113,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/questions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      console.log('Creating question for user:', userId);
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      console.log('Creating question for user:', user.id);
       console.log('Request body:', req.body);
       
       const questionData = insertQuestionSchema.parse({
         ...req.body,
-        authorId: userId,
+        authorId: user.id,
       });
 
       console.log('Parsed question data:', questionData);
@@ -94,14 +144,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/questions/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       const existingQuestion = await storage.getQuestion(id);
       if (!existingQuestion) {
         return res.status(404).json({ message: "Question not found" });
       }
 
-      if (existingQuestion.authorId !== userId) {
+      if (existingQuestion.authorId !== user.id) {
         return res.status(403).json({ message: "Not authorized to edit this question" });
       }
 
@@ -120,14 +173,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/questions/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       const existingQuestion = await storage.getQuestion(id);
       if (!existingQuestion) {
         return res.status(404).json({ message: "Question not found" });
       }
 
-      if (existingQuestion.authorId !== userId) {
+      if (existingQuestion.authorId !== user.id) {
         return res.status(403).json({ message: "Not authorized to delete this question" });
       }
 
@@ -154,19 +210,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/questions/:id/answers', isAuthenticated, async (req: any, res) => {
     try {
       const questionId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       const answerData = insertAnswerSchema.parse({
         ...req.body,
         questionId,
-        authorId: userId,
+        authorId: user.id,
       });
 
       const answer = await storage.createAnswer(answerData);
 
       // Create notification for question author
       const question = await storage.getQuestion(questionId);
-      if (question && question.authorId !== userId) {
+      if (question && question.authorId !== user.id) {
         await storage.createNotification({
           userId: question.authorId,
           type: "question_answered",
@@ -190,7 +249,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/answers/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       const existingAnswer = await storage.getAnswersByQuestionId(0);
       const answer = existingAnswer.find(a => a.id === id);
@@ -199,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Answer not found" });
       }
 
-      if (answer.authorId !== userId) {
+      if (answer.authorId !== user.id) {
         return res.status(403).json({ message: "Not authorized to edit this answer" });
       }
 
@@ -219,14 +281,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const questionId = parseInt(req.params.questionId);
       const answerId = parseInt(req.params.answerId);
-      const userId = req.user.claims.sub;
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       const question = await storage.getQuestion(questionId);
       if (!question) {
         return res.status(404).json({ message: "Question not found" });
       }
 
-      if (question.authorId !== userId) {
+      if (question.authorId !== user.id) {
         return res.status(403).json({ message: "Only the question author can accept answers" });
       }
 
@@ -234,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create notification for answer author
       const answer = question.answers.find(a => a.id === answerId);
-      if (answer && answer.authorId !== userId) {
+      if (answer && answer.authorId !== user.id) {
         await storage.createNotification({
           userId: answer.authorId,
           type: "answer_accepted",
@@ -255,11 +320,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Vote routes
   app.post('/api/votes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { questionId, answerId, voteType } = req.body;
 
       // Check if user already voted
-      const existingVote = await storage.getVote(userId, questionId, answerId);
+      const existingVote = await storage.getVote(user.id, questionId, answerId);
       
       if (existingVote) {
         if (existingVote.voteType === voteType) {
@@ -275,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create new vote
       const voteData = insertVoteSchema.parse({
-        userId,
+        userId: user.id,
         questionId,
         answerId,
         voteType,
@@ -295,11 +363,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notification routes
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { limit } = req.query;
       
       const notifications = await storage.getNotifications(
-        userId,
+        user.id,
         limit ? parseInt(limit as string) : undefined
       );
 
@@ -312,8 +383,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const count = await storage.getUnreadNotificationCount(userId);
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const count = await storage.getUnreadNotificationCount(user.id);
       res.json({ count });
     } catch (error) {
       console.error("Error fetching unread count:", error);
@@ -334,8 +408,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      await storage.markAllNotificationsAsRead(userId);
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      await storage.markAllNotificationsAsRead(user.id);
       res.json({ message: "All notifications marked as read" });
     } catch (error) {
       console.error("Error marking all notifications as read:", error);

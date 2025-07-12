@@ -26,13 +26,13 @@ export const sessions = pgTable(
 );
 
 // User storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
+  id: serial("id").primaryKey(),
+  username: varchar("username", { length: 50 }).unique().notNull(),
+  password: varchar("password", { length: 255 }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).unique(),
+  profileImageUrl: varchar("profile_image_url", { length: 500 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -41,7 +41,7 @@ export const questions = pgTable("questions", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  authorId: varchar("author_id").notNull().references(() => users.id),
+  authorId: integer("author_id").notNull().references(() => users.id),
   tags: text("tags").array().notNull().default([]),
   votes: integer("votes").default(0),
   viewCount: integer("view_count").default(0),
@@ -54,7 +54,7 @@ export const answers = pgTable("answers", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
   questionId: integer("question_id").notNull().references(() => questions.id),
-  authorId: varchar("author_id").notNull().references(() => users.id),
+  authorId: integer("author_id").notNull().references(() => users.id),
   votes: integer("votes").default(0),
   isAccepted: boolean("is_accepted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -63,7 +63,7 @@ export const answers = pgTable("answers", {
 
 export const votes = pgTable("votes", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   questionId: integer("question_id").references(() => questions.id),
   answerId: integer("answer_id").references(() => answers.id),
   voteType: varchar("vote_type", { enum: ["up", "down"] }).notNull(),
@@ -72,7 +72,7 @@ export const votes = pgTable("votes", {
 
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   type: varchar("type", { enum: ["question_answered", "answer_accepted", "mention"] }).notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
@@ -146,7 +146,24 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 }));
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users);
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Auth schemas
+export const registerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters").max(50, "Username must be less than 50 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  email: z.string().email("Invalid email address").optional(),
+});
+
+export const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
 export const insertQuestionSchema = createInsertSchema(questions).omit({
   id: true,
   createdAt: true,
@@ -175,6 +192,8 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type RegisterData = z.infer<typeof registerSchema>;
+export type LoginData = z.infer<typeof loginSchema>;
 export type Question = typeof questions.$inferSelect;
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
 export type Answer = typeof answers.$inferSelect;

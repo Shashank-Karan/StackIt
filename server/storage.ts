@@ -24,8 +24,10 @@ import { eq, desc, asc, sql, and, or, ilike } from "drizzle-orm";
 // Interface for storage operations
 export interface IStorage {
   // User operations
-  // (IMPORTANT) these user operations are mandatory for Replit Auth.
-  getUser(id: string): Promise<User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: UpsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Question operations
@@ -50,23 +52,41 @@ export interface IStorage {
   acceptAnswer(questionId: number, answerId: number): Promise<void>;
 
   // Vote operations
-  getVote(userId: string, questionId?: number, answerId?: number): Promise<Vote | undefined>;
+  getVote(userId: number, questionId?: number, answerId?: number): Promise<Vote | undefined>;
   createVote(vote: InsertVote): Promise<Vote>;
   updateVote(id: number, voteType: "up" | "down"): Promise<Vote>;
   deleteVote(id: number): Promise<void>;
 
   // Notification operations
-  getNotifications(userId: string, limit?: number): Promise<NotificationWithQuestion[]>;
+  getNotifications(userId: number, limit?: number): Promise<NotificationWithQuestion[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: number): Promise<void>;
-  markAllNotificationsAsRead(userId: string): Promise<void>;
-  getUnreadNotificationCount(userId: string): Promise<number>;
+  markAllNotificationsAsRead(userId: number): Promise<void>;
+  getUnreadNotificationCount(userId: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .returning();
     return user;
   }
 
@@ -75,7 +95,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.username,
         set: {
           ...userData,
           updatedAt: new Date(),
@@ -321,7 +341,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vote operations
-  async getVote(userId: string, questionId?: number, answerId?: number): Promise<Vote | undefined> {
+  async getVote(userId: number, questionId?: number, answerId?: number): Promise<Vote | undefined> {
     const conditions = [eq(votes.userId, userId)];
     
     if (questionId) {
@@ -406,7 +426,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Notification operations
-  async getNotifications(userId: string, limit = 20): Promise<NotificationWithQuestion[]> {
+  async getNotifications(userId: number, limit = 20): Promise<NotificationWithQuestion[]> {
     const results = await db
       .select({
         id: notifications.id,
@@ -478,14 +498,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, id));
   }
 
-  async markAllNotificationsAsRead(userId: string): Promise<void> {
+  async markAllNotificationsAsRead(userId: number): Promise<void> {
     await db
       .update(notifications)
       .set({ isRead: true })
       .where(eq(notifications.userId, userId));
   }
 
-  async getUnreadNotificationCount(userId: string): Promise<number> {
+  async getUnreadNotificationCount(userId: number): Promise<number> {
     const [result] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(notifications)
