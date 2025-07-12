@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { X, Code, Image, Video } from 'lucide-react';
+import { X, Code, Image, Video, Upload, Trash2 } from 'lucide-react';
 import { queryClient } from '@/lib/queryClient';
 
 const createPostSchema = z.object({
@@ -43,6 +43,12 @@ interface CreatePostModalProps {
 export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
   const [tagInput, setTagInput] = useState('');
   const [currentTags, setCurrentTags] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [videoPreviewUrls, setVideoPreviewUrls] = useState<string[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const form = useForm<CreatePostFormData>({
@@ -74,9 +80,7 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/posts'] });
-      form.reset();
-      setCurrentTags([]);
-      setTagInput('');
+      resetForm();
       onClose();
       toast({
         title: "Success",
@@ -113,6 +117,70 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
       e.preventDefault();
       addTag();
     }
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (selectedImages.length + imageFiles.length > 5) {
+      toast({
+        title: "Too many images",
+        description: "You can only upload up to 5 images per post.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedImages(prev => [...prev, ...imageFiles]);
+    
+    // Create preview URLs
+    const newPreviewUrls = imageFiles.map(file => URL.createObjectURL(file));
+    setImagePreviewUrls(prev => [...prev, ...newPreviewUrls]);
+  };
+
+  const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const videoFiles = files.filter(file => file.type.startsWith('video/'));
+    
+    if (selectedVideos.length + videoFiles.length > 2) {
+      toast({
+        title: "Too many videos",
+        description: "You can only upload up to 2 videos per post.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedVideos(prev => [...prev, ...videoFiles]);
+    
+    // Create preview URLs
+    const newPreviewUrls = videoFiles.map(file => URL.createObjectURL(file));
+    setVideoPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+  };
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviewUrls[index]);
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeVideo = (index: number) => {
+    URL.revokeObjectURL(videoPreviewUrls[index]);
+    setSelectedVideos(prev => prev.filter((_, i) => i !== index));
+    setVideoPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    form.reset();
+    setCurrentTags([]);
+    setTagInput('');
+    setSelectedImages([]);
+    setSelectedVideos([]);
+    imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    videoPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    setImagePreviewUrls([]);
+    setVideoPreviewUrls([]);
   };
 
   const popularLanguages = [
@@ -263,19 +331,124 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
               </p>
             </div>
 
-            {/* Future: Image/Video Upload Options */}
+            {/* Media Upload Section */}
             <div className="border rounded-lg p-4 bg-gray-50">
-              <p className="text-sm text-gray-600 mb-2">Media (Coming Soon)</p>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" disabled>
+              <p className="text-sm text-gray-600 mb-3">Media Attachments</p>
+              
+              {/* Upload Buttons */}
+              <div className="flex gap-2 mb-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={selectedImages.length >= 5}
+                >
                   <Image className="h-4 w-4 mr-1" />
-                  Add Image
+                  Add Image ({selectedImages.length}/5)
                 </Button>
-                <Button type="button" variant="outline" size="sm" disabled>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => videoInputRef.current?.click()}
+                  disabled={selectedVideos.length >= 2}
+                >
                   <Video className="h-4 w-4 mr-1" />
-                  Add Video
+                  Add Video ({selectedVideos.length}/2)
                 </Button>
               </div>
+
+              {/* Hidden File Inputs */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                multiple
+                className="hidden"
+                onChange={handleVideoUpload}
+              />
+
+              {/* Image Previews */}
+              {selectedImages.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Images ({selectedImages.length})</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {imagePreviewUrls.map((url, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-20 object-cover rounded border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          onClick={() => removeImage(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded">
+                          {(selectedImages[index].size / 1024 / 1024).toFixed(1)}MB
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Video Previews */}
+              {selectedVideos.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Videos ({selectedVideos.length})</p>
+                  <div className="space-y-2">
+                    {videoPreviewUrls.map((url, index) => (
+                      <div key={index} className="relative border rounded p-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Video className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-700">{selectedVideos[index].name}</span>
+                            <span className="text-xs text-gray-500">
+                              ({(selectedVideos[index].size / 1024 / 1024).toFixed(1)}MB)
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => removeVideo(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <video
+                          src={url}
+                          className="w-full h-32 object-cover rounded mt-2"
+                          controls
+                          preload="metadata"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedImages.length === 0 && selectedVideos.length === 0 && (
+                <p className="text-xs text-gray-500">
+                  Upload images (PNG, JPG, GIF) up to 5MB each, or videos (MP4, WebM) up to 50MB each
+                </p>
+              )}
             </div>
 
             {/* Submit Buttons */}
