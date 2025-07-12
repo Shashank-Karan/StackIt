@@ -162,7 +162,7 @@ class RegisterForm(FlaskForm):
 class QuestionForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired(), Length(min=10, max=200)])
     description = TextAreaField('Description', validators=[DataRequired(), Length(min=20)])
-    tags = StringField('Tags (comma-separated)', validators=[OptionalValidator()])
+    tags = StringField('Tags (comma-separated)', validators=[DataRequired(), Length(min=1, message='At least one tag is required')])
     submit = SubmitField('Post Question')
 
 class AnswerForm(FlaskForm):
@@ -292,6 +292,23 @@ def post_answer(question_id):
             db.session.add(notification)
             db.session.commit()
         
+        # Check for @username mentions in the answer content
+        import re
+        mentions = re.findall(r'@(\w+)', form.content.data)
+        for username in mentions:
+            mentioned_user = User.query.filter_by(username=username).first()
+            if mentioned_user and mentioned_user.id != session['user_id']:
+                mention_notification = Notification(
+                    user_id=mentioned_user.id,
+                    type='mention',
+                    title=f'You were mentioned in an answer',
+                    message=f'@{get_current_user().username} mentioned you in an answer to "{question.title}"',
+                    question_id=question_id,
+                    answer_id=answer.id
+                )
+                db.session.add(mention_notification)
+                db.session.commit()
+        
         flash('Your answer has been posted!', 'success')
     else:
         flash('Please provide a valid answer.', 'error')
@@ -332,7 +349,7 @@ def vote():
     
     db.session.commit()
     
-    # Update vote scores
+    # Update vote scores and create upvote notifications
     if question_id:
         question = Question.query.get(question_id)
         up_votes = Vote.query.filter_by(question_id=question_id, vote_type='up').count()
@@ -346,6 +363,19 @@ def vote():
         up_votes = Vote.query.filter_by(answer_id=answer_id, vote_type='up').count()
         down_votes = Vote.query.filter_by(answer_id=answer_id, vote_type='down').count()
         answer.vote_score = up_votes - down_votes
+        
+        # Create notification for upvote on answer
+        if vote_type == 'up' and answer.author_id != session['user_id']:
+            upvote_notification = Notification(
+                user_id=answer.author_id,
+                type='upvote',
+                title='Your answer was upvoted',
+                message=f'Someone upvoted your answer to "{answer.question.title}"',
+                question_id=answer.question_id,
+                answer_id=answer_id
+            )
+            db.session.add(upvote_notification)
+        
         db.session.commit()
         return jsonify({'new_score': answer.vote_score})
     
@@ -443,6 +473,69 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
 
+# Notification routes
+@app.route('/notifications')
+@login_required
+def notifications():
+    """Show user notifications."""
+    notifications = Notification.query.filter_by(user_id=session['user_id']).order_by(Notification.created_at.desc()).all()
+    
+    # Mark all notifications as read
+    for notification in notifications:
+        notification.is_read = True
+    db.session.commit()
+    
+    return render_template('notifications.html', notifications=notifications, current_user=get_current_user())
+
+@app.route('/notifications/count')
+@login_required
+def notification_count():
+    """Get unread notification count."""
+    count = Notification.query.filter_by(user_id=session['user_id'], is_read=False).count()
+    return jsonify({'count': count})
+
+@app.route('/notifications/<int:notification_id>/mark_read')
+@login_required
+def mark_notification_read(notification_id):
+    """Mark a specific notification as read."""
+    notification = Notification.query.get_or_404(notification_id)
+    if notification.user_id == session['user_id']:
+        notification.is_read = True
+        db.session.commit()
+    return jsonify({'success': True})
+
+# Tags routes
+@app.route('/tags')
+def tags():
+    """Show all tags."""
+    # Get all tags from questions
+    questions = Question.query.all()
+    all_tags = set()
+    
+    for question in questions:
+        question_tags = question.get_tags()
+        all_tags.update(question_tags)
+    
+    # Convert to list and sort
+    tag_list = sorted(list(all_tags))
+    
+    return render_template('tags.html', tags=tag_list, current_user=get_current_user())
+
+@app.route('/tags/<tag>')
+def tag_questions(tag):
+    """Show questions with a specific tag."""
+    questions = Question.query.all()
+    filtered_questions = []
+    
+    for question in questions:
+        if tag in question.get_tags():
+            filtered_questions.append(question)
+    
+    return render_template('tag_questions.html', 
+                         questions=filtered_questions, 
+                         tag=tag,
+                         current_user=get_current_user())
+
 # AI Features
 @app.route('/ai/improve_text', methods=['POST'])
 @login_required
@@ -474,7 +567,7 @@ def create_templates():
     # Create templates directory
     os.makedirs('templates', exist_ok=True)
     
-    # Base template
+    # Base template with enhanced features
     base_template = '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -483,53 +576,145 @@ def create_templates():
     <title>{% block title %}StackIt - Python Q&A Platform{% endblock %}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; background: #f8f9fa; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { background: #2c3e50; color: white; padding: 1rem 0; }
+        .header { background: #2c3e50; color: white; padding: 1rem 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .nav { display: flex; justify-content: space-between; align-items: center; }
-        .nav a { color: white; text-decoration: none; margin: 0 10px; padding: 5px 10px; }
-        .nav a:hover { background: #34495e; border-radius: 3px; }
-        .btn { background: #3498db; color: white; padding: 10px 20px; border: none; text-decoration: none; border-radius: 3px; cursor: pointer; }
-        .btn:hover { background: #2980b9; }
+        .nav-left { display: flex; align-items: center; }
+        .nav-right { display: flex; align-items: center; gap: 15px; }
+        .nav a { color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; transition: background 0.2s; }
+        .nav a:hover { background: #34495e; }
+        .logo { font-size: 1.5rem; font-weight: bold; }
+        
+        /* Notification Bell */
+        .notification-bell { position: relative; cursor: pointer; }
+        .notification-bell::before { content: "🔔"; font-size: 1.2em; }
+        .notification-badge { position: absolute; top: -5px; right: -5px; background: #e74c3c; color: white; 
+                             border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; 
+                             align-items: center; justify-content: center; font-weight: bold; }
+        
+        /* Buttons */
+        .btn { background: #3498db; color: white; padding: 10px 20px; border: none; text-decoration: none; 
+               border-radius: 4px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: inline-block; }
+        .btn:hover { background: #2980b9; text-decoration: none; color: white; }
         .btn-success { background: #27ae60; }
         .btn-success:hover { background: #219a52; }
-        .card { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        
+        /* Cards */
+        .card { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; 
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e9ecef; }
+        
+        /* Forms */
         .form-group { margin: 15px 0; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; }
-        .alert { padding: 10px; margin: 10px 0; border-radius: 3px; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .alert-info { background: #cce7ff; color: #004085; border: 1px solid #b6d7ff; }
-        .question-item { border-bottom: 1px solid #eee; padding: 15px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; 
+                                                                      border-radius: 4px; font-size: 14px; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #3498db; }
+        
+        /* Alerts */
+        .alert { padding: 12px; margin: 10px 0; border-radius: 4px; border-left: 4px solid; }
+        .alert-success { background: #d4edda; color: #155724; border-color: #27ae60; }
+        .alert-error { background: #f8d7da; color: #721c24; border-color: #e74c3c; }
+        .alert-info { background: #cce7ff; color: #004085; border-color: #3498db; }
+        
+        /* Questions */
+        .question-item { border-bottom: 1px solid #e9ecef; padding: 20px 0; display: flex; }
         .question-item:last-child { border-bottom: none; }
-        .vote-buttons { display: flex; flex-direction: column; align-items: center; margin-right: 15px; }
-        .vote-btn { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 5px 10px; cursor: pointer; }
-        .vote-btn:hover { background: #d5dbdb; }
-        .vote-score { font-weight: bold; margin: 5px 0; }
+        .question-content { flex: 1; }
+        .question-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+        .question-title a { color: #2c3e50; text-decoration: none; }
+        .question-title a:hover { color: #3498db; }
+        .question-excerpt { color: #6c757d; margin-bottom: 10px; }
+        
+        /* Tags */
         .tags { margin: 10px 0; }
-        .tag { background: #e8f4f8; color: #2980b9; padding: 2px 8px; margin: 2px; border-radius: 3px; font-size: 12px; }
-        .meta { color: #7f8c8d; font-size: 12px; margin-top: 10px; }
-        .answer { border-left: 3px solid #3498db; padding-left: 15px; margin: 20px 0; }
-        .accepted { border-left-color: #27ae60; }
-        .accept-btn { background: #27ae60; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; }
-        .search-box { padding: 10px; margin: 10px 0; width: 100%; border: 1px solid #ddd; border-radius: 3px; }
+        .tag { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; 
+               padding: 4px 10px; margin: 2px 4px 2px 0; border-radius: 12px; font-size: 11px; 
+               font-weight: 500; text-decoration: none; display: inline-block; transition: all 0.2s; }
+        .tag:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); color: white; }
+        .tag-input { background: #f8f9fa; border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; 
+                     font-size: 12px; color: #6c757d; }
+        
+        /* Voting */
+        .vote-buttons { display: flex; flex-direction: column; align-items: center; margin-right: 20px; min-width: 60px; }
+        .vote-btn { background: #f8f9fa; border: 1px solid #dee2e6; padding: 8px 12px; cursor: pointer; 
+                    border-radius: 4px; margin: 2px 0; transition: all 0.2s; font-size: 16px; }
+        .vote-btn:hover { background: #e9ecef; }
+        .vote-btn.active { background: #3498db; color: white; }
+        .vote-score { font-weight: bold; margin: 8px 0; font-size: 16px; text-align: center; }
+        
+        /* Meta info */
+        .meta { color: #6c757d; font-size: 12px; margin-top: 10px; }
+        .meta a { color: #3498db; text-decoration: none; }
+        .meta a:hover { text-decoration: underline; }
+        
+        /* Answers */
+        .answer { border-left: 3px solid #dee2e6; padding-left: 20px; margin: 20px 0; }
+        .answer.accepted { border-left-color: #27ae60; background: #f8fff8; }
+        .accept-btn { background: #27ae60; color: white; padding: 6px 12px; border: none; 
+                      border-radius: 4px; cursor: pointer; font-size: 12px; }
+        
+        /* Search and filters */
+        .search-box { padding: 12px; margin: 10px 0; width: 100%; border: 1px solid #dee2e6; 
+                      border-radius: 4px; font-size: 14px; }
         .filters { margin: 20px 0; }
-        .filter-btn { background: #ecf0f1; color: #2c3e50; padding: 8px 15px; border: 1px solid #bdc3c7; text-decoration: none; margin: 0 5px; border-radius: 3px; }
-        .filter-btn.active { background: #3498db; color: white; }
+        .filter-btn { background: #f8f9fa; color: #495057; padding: 8px 16px; border: 1px solid #dee2e6; 
+                      text-decoration: none; margin: 0 5px; border-radius: 4px; transition: all 0.2s; }
+        .filter-btn:hover { background: #e9ecef; }
+        .filter-btn.active { background: #3498db; color: white; border-color: #3498db; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .question-item { flex-direction: column; }
+            .vote-buttons { flex-direction: row; margin-right: 0; margin-bottom: 10px; }
+            .nav-right { gap: 10px; }
+        }
     </style>
+    <script>
+        // Notification badge update
+        function updateNotificationBadge() {
+            fetch('/notifications/count')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.querySelector('.notification-badge');
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error updating notification badge:', error));
+        }
+        
+        // Update badge on page load and every 30 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.querySelector('.notification-bell')) {
+                updateNotificationBadge();
+                setInterval(updateNotificationBadge, 30000);
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="header">
         <div class="container">
             <div class="nav">
-                <div>
-                    <a href="{{ url_for('index') }}"><strong>StackIt</strong></a>
+                <div class="nav-left">
+                    <a href="{{ url_for('index') }}" class="logo">StackIt</a>
+                    <a href="{{ url_for('tags') }}">Tags</a>
                 </div>
-                <div>
+                <div class="nav-right">
                     {% if current_user %}
-                        <a href="{{ url_for('ask_question') }}">Ask Question</a>
-                        <span>Welcome, {{ current_user.get_full_name() }}!</span>
+                        <a href="{{ url_for('ask_question') }}" class="btn btn-sm">Ask Question</a>
+                        <a href="{{ url_for('notifications') }}" class="notification-bell">
+                            <span class="notification-badge">0</span>
+                        </a>
+                        <span>{{ current_user.get_full_name() }}</span>
                         <a href="{{ url_for('logout') }}">Logout</a>
                     {% else %}
                         <a href="{{ url_for('login') }}">Login</a>
@@ -559,7 +744,428 @@ def create_templates():
     with open('templates/base.html', 'w') as f:
         f.write(base_template)
     
-    return jsonify({'message': 'Templates created successfully'})
+    # Index template - enhanced with public access
+    index_template = '''{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h1>Welcome to StackIt</h1>
+    <p>A community-driven Q&A platform where knowledge is shared freely.</p>
+    {% if not current_user %}
+        <p><strong>Browse all questions and answers below, or <a href="{{ url_for('login') }}">login</a> to ask questions and participate!</strong></p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <form method="GET" action="{{ url_for('index') }}">
+        <input type="search" name="search" placeholder="Search questions..." value="{{ search }}" class="search-box">
+    </form>
+    
+    <div class="filters">
+        <a href="{{ url_for('index', filter='newest') }}" class="filter-btn {{ 'active' if filter_type == 'newest' else '' }}">Newest</a>
+        <a href="{{ url_for('index', filter='unanswered') }}" class="filter-btn {{ 'active' if filter_type == 'unanswered' else '' }}">Unanswered</a>
+        <a href="{{ url_for('index') }}" class="filter-btn {{ 'active' if filter_type == 'all' else '' }}">All</a>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Questions</h2>
+    {% if questions.items %}
+        {% for question in questions.items %}
+            <div class="question-item">
+                <div class="vote-buttons">
+                    <div class="vote-score">{{ question.vote_score }}</div>
+                    <div style="font-size: 10px; color: #6c757d;">votes</div>
+                </div>
+                <div class="question-content">
+                    <h3 class="question-title">
+                        <a href="{{ url_for('question_detail', question_id=question.id) }}">{{ question.title }}</a>
+                    </h3>
+                    <p class="question-excerpt">{{ question.description[:150] }}{% if question.description|length > 150 %}...{% endif %}</p>
+                    
+                    {% if question.get_tags() %}
+                        <div class="tags">
+                            {% for tag in question.get_tags() %}
+                                <a href="{{ url_for('tag_questions', tag=tag) }}" class="tag">{{ tag }}</a>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="meta">
+                        <span>{{ question.time_ago() }}</span> by 
+                        <a href="#">{{ question.author.get_full_name() }}</a> • 
+                        <span>{{ question.get_answer_count() }} answers</span> • 
+                        <span>{{ question.view_count }} views</span>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        
+        <!-- Pagination -->
+        {% if questions.pages > 1 %}
+            <div style="margin-top: 20px;">
+                {% if questions.has_prev %}
+                    <a href="{{ url_for('index', page=questions.prev_num, search=search, filter=filter_type) }}" class="btn">Previous</a>
+                {% endif %}
+                {% if questions.has_next %}
+                    <a href="{{ url_for('index', page=questions.next_num, search=search, filter=filter_type) }}" class="btn">Next</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <p>No questions found. {% if current_user %}<a href="{{ url_for('ask_question') }}">Be the first to ask!</a>{% endif %}</p>
+    {% endif %}
+</div>
+{% endblock %}'''
+
+    # Notifications template
+    notifications_template = '''{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Your Notifications</h2>
+    {% if notifications %}
+        {% for notification in notifications %}
+            <div class="question-item">
+                <div class="question-content">
+                    <h4>{{ notification.title }}</h4>
+                    <p>{{ notification.message }}</p>
+                    <div class="meta">
+                        <span>{{ notification.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                        {% if notification.question_id %}
+                            • <a href="{{ url_for('question_detail', question_id=notification.question_id) }}">View Question</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No notifications yet.</p>
+    {% endif %}
+</div>
+{% endblock %}'''
+
+    # Tags template
+    tags_template = '''{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>All Tags</h2>
+    <p>Browse questions by topic</p>
+    {% if tags %}
+        <div class="tags" style="margin-top: 20px;">
+            {% for tag in tags %}
+                <a href="{{ url_for('tag_questions', tag=tag) }}" class="tag">{{ tag }}</a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No tags available yet.</p>
+    {% endif %}
+</div>
+{% endblock %}'''
+
+    # Ask question template - enhanced with required tags
+    ask_question_template = '''{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Ask a Question</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.title.label }}
+            {{ form.title(class="form-control") }}
+            {% if form.title.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.title.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.description.label }}
+            {{ form.description(class="form-control", rows="8") }}
+            {% if form.description.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.description.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.tags.label }}
+            {{ form.tags(class="form-control", placeholder="Enter tags separated by commas (e.g., python, web-development, database)") }}
+            <small class="tag-input">At least one tag is required. Use existing tags or create new ones.</small>
+            {% if form.tags.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.tags.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.submit(class="btn btn-success") }}
+            <a href="{{ url_for('index') }}" class="btn">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}'''
+
+    # Question detail template - enhanced with voting and tags
+    question_detail_template = '''{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div class="question-item">
+        <div class="vote-buttons">
+            {% if current_user %}
+                <button class="vote-btn" onclick="vote('up', {{ question.id }}, null)">▲</button>
+            {% else %}
+                <div class="vote-btn" title="Login to vote">▲</div>
+            {% endif %}
+            <div class="vote-score" id="question-score-{{ question.id }}">{{ question.vote_score }}</div>
+            {% if current_user %}
+                <button class="vote-btn" onclick="vote('down', {{ question.id }}, null)">▼</button>
+            {% else %}
+                <div class="vote-btn" title="Login to vote">▼</div>
+            {% endif %}
+        </div>
+        <div class="question-content">
+            <h1>{{ question.title }}</h1>
+            <div style="margin: 20px 0;">{{ question.description | safe }}</div>
+            
+            {% if question.get_tags() %}
+                <div class="tags">
+                    {% for tag in question.get_tags() %}
+                        <a href="{{ url_for('tag_questions', tag=tag) }}" class="tag">{{ tag }}</a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="meta">
+                <span>{{ question.time_ago() }}</span> by 
+                <a href="#">{{ question.author.get_full_name() }}</a> • 
+                <span>{{ question.view_count }} views</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>{{ answers | length }} Answers</h3>
+    {% for answer in answers %}
+        <div class="answer {{ 'accepted' if answer.is_accepted else '' }}">
+            <div class="question-item">
+                <div class="vote-buttons">
+                    {% if current_user %}
+                        <button class="vote-btn" onclick="vote('up', null, {{ answer.id }})">▲</button>
+                    {% else %}
+                        <div class="vote-btn" title="Login to vote">▲</div>
+                    {% endif %}
+                    <div class="vote-score" id="answer-score-{{ answer.id }}">{{ answer.vote_score }}</div>
+                    {% if current_user %}
+                        <button class="vote-btn" onclick="vote('down', null, {{ answer.id }})">▼</button>
+                    {% else %}
+                        <div class="vote-btn" title="Login to vote">▼</div>
+                    {% endif %}
+                </div>
+                <div class="question-content">
+                    <p>{{ answer.content | safe }}</p>
+                    
+                    <div class="meta">
+                        <span>{{ answer.time_ago() }}</span> by 
+                        <a href="#">{{ answer.author.get_full_name() }}</a>
+                        {% if current_user and current_user.id == question.author_id and not answer.is_accepted %}
+                            <a href="{{ url_for('accept_answer', answer_id=answer.id) }}" class="accept-btn">Accept Answer</a>
+                        {% endif %}
+                        {% if answer.is_accepted %}
+                            <span style="color: #27ae60; font-weight: bold;">✓ Accepted</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% if current_user %}
+    <div class="card">
+        <h3>Your Answer</h3>
+        <form method="POST" action="{{ url_for('post_answer', question_id=question.id) }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.content.label }}
+                {{ form.content(class="form-control", rows="6", placeholder="Write your answer here... You can mention other users with @username") }}
+                {% if form.content.errors %}
+                    <div class="alert alert-error">
+                        {% for error in form.content.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.submit(class="btn btn-success") }}
+            </div>
+        </form>
+    </div>
+{% else %}
+    <div class="card">
+        <p><a href="{{ url_for('login') }}">Login</a> to post an answer.</p>
+    </div>
+{% endif %}
+
+<script>
+function vote(voteType, questionId, answerId) {
+    fetch('/vote', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            vote_type: voteType,
+            question_id: questionId,
+            answer_id: answerId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.new_score !== undefined) {
+            const scoreElement = document.getElementById(
+                questionId ? `question-score-${questionId}` : `answer-score-${answerId}`
+            );
+            scoreElement.textContent = data.new_score;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+{% endblock %}'''
+
+    # Login template
+    login_template = '''{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Login</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.username.label }}
+            {{ form.username(class="form-control") }}
+            {% if form.username.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.username.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.password.label }}
+            {{ form.password(class="form-control") }}
+            {% if form.password.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.password.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.submit(class="btn btn-success") }}
+        </div>
+    </form>
+    
+    <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+</div>
+{% endblock %}'''
+
+    # Register template
+    register_template = '''{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Register</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+            {{ form.username.label }}
+            {{ form.username(class="form-control") }}
+            {% if form.username.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.username.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.email.label }}
+            {{ form.email(class="form-control") }}
+            {% if form.email.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.email.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.password.label }}
+            {{ form.password(class="form-control") }}
+            {% if form.password.errors %}
+                <div class="alert alert-error">
+                    {% for error in form.password.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            {{ form.first_name.label }}
+            {{ form.first_name(class="form-control") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.last_name.label }}
+            {{ form.last_name(class="form-control") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.submit(class="btn btn-success") }}
+        </div>
+    </form>
+    
+    <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+</div>
+{% endblock %}'''
+
+    # Write all templates
+    templates = {
+        'index.html': index_template,
+        'notifications.html': notifications_template,
+        'tags.html': tags_template,
+        'ask_question.html': ask_question_template,
+        'question_detail.html': question_detail_template,
+        'login.html': login_template,
+        'register.html': register_template
+    }
+    
+    for filename, content in templates.items():
+        with open(f'templates/{filename}', 'w') as f:
+            f.write(content)
+    
+    return jsonify({'message': 'All templates created successfully with enhanced features'})
 
 if __name__ == '__main__':
     with app.app_context():
