@@ -1,0 +1,336 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema } from "@shared/schema";
+import { z } from "zod";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Question routes
+  app.get('/api/questions', async (req, res) => {
+    try {
+      const { search, tags, filter, limit, offset } = req.query;
+      
+      const questions = await storage.getQuestions({
+        search: search as string,
+        tags: tags ? (tags as string).split(',') : undefined,
+        filter: filter as "newest" | "unanswered",
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      res.status(500).json({ message: "Failed to fetch questions" });
+    }
+  });
+
+  app.get('/api/questions/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const question = await storage.getQuestion(id);
+      
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      // Increment view count
+      await storage.incrementViewCount(id);
+
+      res.json(question);
+    } catch (error) {
+      console.error("Error fetching question:", error);
+      res.status(500).json({ message: "Failed to fetch question" });
+    }
+  });
+
+  app.post('/api/questions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const questionData = insertQuestionSchema.parse({
+        ...req.body,
+        authorId: userId,
+      });
+
+      const question = await storage.createQuestion(questionData);
+      res.json(question);
+    } catch (error) {
+      console.error("Error creating question:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid question data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create question" });
+    }
+  });
+
+  app.put('/api/questions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const existingQuestion = await storage.getQuestion(id);
+      if (!existingQuestion) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      if (existingQuestion.authorId !== userId) {
+        return res.status(403).json({ message: "Not authorized to edit this question" });
+      }
+
+      const questionData = insertQuestionSchema.partial().parse(req.body);
+      const question = await storage.updateQuestion(id, questionData);
+      res.json(question);
+    } catch (error) {
+      console.error("Error updating question:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid question data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update question" });
+    }
+  });
+
+  app.delete('/api/questions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const existingQuestion = await storage.getQuestion(id);
+      if (!existingQuestion) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      if (existingQuestion.authorId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this question" });
+      }
+
+      await storage.deleteQuestion(id);
+      res.json({ message: "Question deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ message: "Failed to delete question" });
+    }
+  });
+
+  // Answer routes
+  app.get('/api/questions/:id/answers', async (req, res) => {
+    try {
+      const questionId = parseInt(req.params.id);
+      const answers = await storage.getAnswersByQuestionId(questionId);
+      res.json(answers);
+    } catch (error) {
+      console.error("Error fetching answers:", error);
+      res.status(500).json({ message: "Failed to fetch answers" });
+    }
+  });
+
+  app.post('/api/questions/:id/answers', isAuthenticated, async (req: any, res) => {
+    try {
+      const questionId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const answerData = insertAnswerSchema.parse({
+        ...req.body,
+        questionId,
+        authorId: userId,
+      });
+
+      const answer = await storage.createAnswer(answerData);
+
+      // Create notification for question author
+      const question = await storage.getQuestion(questionId);
+      if (question && question.authorId !== userId) {
+        await storage.createNotification({
+          userId: question.authorId,
+          type: "question_answered",
+          title: "New Answer",
+          message: `Someone answered your question: ${question.title}`,
+          questionId,
+          answerId: answer.id,
+        });
+      }
+
+      res.json(answer);
+    } catch (error) {
+      console.error("Error creating answer:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid answer data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create answer" });
+    }
+  });
+
+  app.put('/api/answers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const existingAnswer = await storage.getAnswersByQuestionId(0);
+      const answer = existingAnswer.find(a => a.id === id);
+      
+      if (!answer) {
+        return res.status(404).json({ message: "Answer not found" });
+      }
+
+      if (answer.authorId !== userId) {
+        return res.status(403).json({ message: "Not authorized to edit this answer" });
+      }
+
+      const answerData = insertAnswerSchema.partial().parse(req.body);
+      const updatedAnswer = await storage.updateAnswer(id, answerData);
+      res.json(updatedAnswer);
+    } catch (error) {
+      console.error("Error updating answer:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid answer data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update answer" });
+    }
+  });
+
+  app.post('/api/questions/:questionId/answers/:answerId/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const questionId = parseInt(req.params.questionId);
+      const answerId = parseInt(req.params.answerId);
+      const userId = req.user.claims.sub;
+      
+      const question = await storage.getQuestion(questionId);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      if (question.authorId !== userId) {
+        return res.status(403).json({ message: "Only the question author can accept answers" });
+      }
+
+      await storage.acceptAnswer(questionId, answerId);
+
+      // Create notification for answer author
+      const answer = question.answers.find(a => a.id === answerId);
+      if (answer && answer.authorId !== userId) {
+        await storage.createNotification({
+          userId: answer.authorId,
+          type: "answer_accepted",
+          title: "Answer Accepted",
+          message: `Your answer was accepted for: ${question.title}`,
+          questionId,
+          answerId,
+        });
+      }
+
+      res.json({ message: "Answer accepted successfully" });
+    } catch (error) {
+      console.error("Error accepting answer:", error);
+      res.status(500).json({ message: "Failed to accept answer" });
+    }
+  });
+
+  // Vote routes
+  app.post('/api/votes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { questionId, answerId, voteType } = req.body;
+
+      // Check if user already voted
+      const existingVote = await storage.getVote(userId, questionId, answerId);
+      
+      if (existingVote) {
+        if (existingVote.voteType === voteType) {
+          // Same vote type, remove the vote
+          await storage.deleteVote(existingVote.id);
+          return res.json({ message: "Vote removed" });
+        } else {
+          // Different vote type, update the vote
+          const updatedVote = await storage.updateVote(existingVote.id, voteType);
+          return res.json(updatedVote);
+        }
+      }
+
+      // Create new vote
+      const voteData = insertVoteSchema.parse({
+        userId,
+        questionId,
+        answerId,
+        voteType,
+      });
+
+      const vote = await storage.createVote(voteData);
+      res.json(vote);
+    } catch (error) {
+      console.error("Error creating vote:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid vote data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create vote" });
+    }
+  });
+
+  // Notification routes
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { limit } = req.query;
+      
+      const notifications = await storage.getNotifications(
+        userId,
+        limit ? parseInt(limit as string) : undefined
+      );
+
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.put('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.markNotificationAsRead(id);
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.put('/api/notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
