@@ -70,109 +70,57 @@ export default function Community() {
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              {/* Create Post Card */}
-              <div className="lg:col-span-1">
-                <div className="sticky top-24">
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Create Post</h2>
-                    <div 
-                      className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                      onClick={handleCreatePost}
-                    >
-                      <textarea
-                        placeholder="What's on your mind? Share a code snippet, ask a question..."
-                        className="w-full h-20 bg-transparent border-none resize-none text-gray-700 placeholder-gray-500 focus:outline-none"
-                        readOnly
-                      />
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      <input
-                        type="text"
-                        placeholder="Optional: Add code snippet..."
-                        className="w-full p-3 rounded-lg border border-gray-300 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        readOnly
-                        onClick={handleCreatePost}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Language (Optional)"
-                        className="w-full p-3 rounded-lg border border-gray-300 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        readOnly
-                        onClick={handleCreatePost}
-                      />
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="border-gray-300 text-gray-600 hover:bg-gray-50"
-                          onClick={handleCreatePost}
-                        >
-                          📷 Image
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="border-gray-300 text-gray-600 hover:bg-gray-50"
-                          onClick={handleCreatePost}
-                        >
-                          🎥 Video
-                        </Button>
-                      </div>
-                      <Button 
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                        onClick={handleCreatePost}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Post
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Add Create Post Button */}
+            <div className="mb-6 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Community Posts</h2>
+              <Button 
+                onClick={handleCreatePost}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Post
+              </Button>
+            </div>
 
-              {/* Posts Feed */}
-              <div className="lg:col-span-3">
-                <div className="space-y-6">
-                  {isLoading ? (
-                    // Loading skeletons
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                          <Skeleton className="h-10 w-10 rounded-full bg-gray-200" />
-                          <div className="space-y-2">
-                            <Skeleton className="h-4 w-32 bg-gray-200" />
-                            <Skeleton className="h-3 w-20 bg-gray-200" />
-                          </div>
-                        </div>
-                        <Skeleton className="h-20 w-full mb-4 bg-gray-200" />
-                        <Skeleton className="h-32 w-full bg-gray-200" />
+            {/* Posts Feed */}
+            <div className="space-y-6">
+              {isLoading ? (
+                // Loading skeletons
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Skeleton className="h-10 w-10 rounded-full bg-gray-200" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32 bg-gray-200" />
+                        <Skeleton className="h-3 w-20 bg-gray-200" />
                       </div>
-                    ))
-                  ) : posts && posts.length > 0 ? (
-                    posts.map((post: PostWithAuthor) => (
-                      <PostCard key={post.id} post={post} />
-                    ))
-                  ) : (
-                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-12 text-center">
-                      <div className="text-6xl mb-4">💬</div>
-                      <h3 className="text-2xl font-semibold text-gray-900 mb-2">No posts yet</h3>
-                      <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                        Be the first to share something with the community! Ask questions, share code snippets, or start a discussion.
-                      </p>
-                      <Button 
-                        onClick={handleCreatePost}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-                        size="lg"
-                      >
-                        <Plus className="h-5 w-5 mr-2" />
-                        Create First Post
-                      </Button>
                     </div>
-                  )}
+                    <Skeleton className="h-20 w-full mb-4 bg-gray-200" />
+                    <Skeleton className="h-32 w-full bg-gray-200" />
+                  </div>
+                ))
+              ) : posts && posts.length > 0 ? (
+                posts.map((post: PostWithAuthor) => (
+                  <PostCard key={post.id} post={post} />
+                ))
+              ) : (
+                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-12 text-center">
+                  <div className="text-6xl mb-4">💬</div>
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">No posts yet</h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    Be the first to share something with the community! Ask questions, share code snippets, or start a discussion.
+                  </p>
+                  <Button 
+                    onClick={handleCreatePost}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
+                    size="lg"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Create First Post
+                  </Button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </main>
