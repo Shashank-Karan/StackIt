@@ -46,13 +46,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
-      const response = await apiRequest("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/auth/login", data);
       return response.json();
     },
     onSuccess: () => {
@@ -74,13 +68,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
-      const response = await apiRequest("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/auth/register", data);
       return response.json();
     },
     onSuccess: () => {
