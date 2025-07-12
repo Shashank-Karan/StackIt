@@ -68,16 +68,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/questions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log('Creating question for user:', userId);
+      console.log('Request body:', req.body);
+      
       const questionData = insertQuestionSchema.parse({
         ...req.body,
         authorId: userId,
       });
 
+      console.log('Parsed question data:', questionData);
+      
       const question = await storage.createQuestion(questionData);
+      console.log('Created question:', question);
       res.json(question);
     } catch (error) {
       console.error("Error creating question:", error);
       if (error instanceof z.ZodError) {
+        console.log('Validation errors:', error.errors);
         return res.status(400).json({ message: "Invalid question data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create question" });

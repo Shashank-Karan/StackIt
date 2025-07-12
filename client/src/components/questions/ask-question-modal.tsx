@@ -18,6 +18,8 @@ import { insertQuestionSchema } from '@shared/schema';
 
 const askQuestionSchema = insertQuestionSchema.extend({
   tagsInput: z.string().optional(),
+}).omit({
+  authorId: true, // This will be added by the backend
 });
 
 type AskQuestionFormData = z.infer<typeof askQuestionSchema>;
@@ -50,7 +52,9 @@ export function AskQuestionModal({ isOpen, onClose }: AskQuestionModalProps) {
         description: data.description,
         tags: tags,
       };
-      await apiRequest('POST', '/api/questions', questionData);
+      console.log('Submitting question:', questionData);
+      const response = await apiRequest('POST', '/api/questions', questionData);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
@@ -64,6 +68,7 @@ export function AskQuestionModal({ isOpen, onClose }: AskQuestionModalProps) {
       onClose();
     },
     onError: (error) => {
+      console.error('Error creating question:', error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -84,6 +89,8 @@ export function AskQuestionModal({ isOpen, onClose }: AskQuestionModalProps) {
   });
 
   const handleSubmit = (data: AskQuestionFormData) => {
+    console.log('Form data:', data);
+    console.log('Form errors:', form.formState.errors);
     createQuestionMutation.mutate(data);
   };
 
