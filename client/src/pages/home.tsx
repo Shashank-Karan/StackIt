@@ -61,8 +61,8 @@ export default function Home() {
 
   // Fetch individual question when modal opens
   const { data: questionDetail } = useQuery({
-    queryKey: ['/api/questions', selectedQuestion?.id],
-    enabled: !!selectedQuestion?.id,
+    queryKey: [`/api/questions/${selectedQuestion?.id}`],
+    enabled: !!selectedQuestion?.id && typeof selectedQuestion.id === 'number',
     retry: false,
   });
 

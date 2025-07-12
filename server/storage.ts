@@ -95,7 +95,35 @@ export class DatabaseStorage implements IStorage {
   } = {}): Promise<QuestionWithAuthor[]> {
     const { search, tags, filter, limit = 20, offset = 0 } = options;
 
-    let query = db
+    // Build base query
+    let whereConditions: any[] = [];
+
+    // Apply search filter
+    if (search) {
+      whereConditions.push(
+        or(
+          ilike(questions.title, `%${search}%`),
+          ilike(questions.description, `%${search}%`)
+        )
+      );
+    }
+
+    // Apply tag filter
+    if (tags && tags.length > 0) {
+      whereConditions.push(sql`${questions.tags} && ${tags}`);
+    }
+
+    // Apply specific filters
+    if (filter === "unanswered") {
+      whereConditions.push(
+        sql`(SELECT COUNT(*) FROM ${answers} WHERE ${answers.questionId} = ${questions.id}) = 0`
+      );
+    }
+
+    // Combine where conditions
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    const results = await db
       .select({
         id: questions.id,
         title: questions.title,
@@ -122,41 +150,11 @@ export class DatabaseStorage implements IStorage {
         )`.as('answerCount'),
       })
       .from(questions)
-      .leftJoin(users, eq(questions.authorId, users.id));
-
-    // Apply search filter
-    if (search) {
-      query = query.where(
-        or(
-          ilike(questions.title, `%${search}%`),
-          ilike(questions.description, `%${search}%`)
-        )
-      );
-    }
-
-    // Apply tag filter
-    if (tags && tags.length > 0) {
-      query = query.where(sql`${questions.tags} && ${tags}`);
-    }
-
-    // Apply specific filters
-    if (filter === "unanswered") {
-      query = query.where(
-        sql`(SELECT COUNT(*) FROM ${answers} WHERE ${answers.questionId} = ${questions.id}) = 0`
-      );
-    }
-
-    // Apply ordering
-    if (filter === "newest") {
-      query = query.orderBy(desc(questions.createdAt));
-    } else {
-      query = query.orderBy(desc(questions.createdAt));
-    }
-
-    // Apply pagination
-    query = query.limit(limit).offset(offset);
-
-    const results = await query;
+      .leftJoin(users, eq(questions.authorId, users.id))
+      .where(whereClause)
+      .orderBy(desc(questions.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     return results.map((row) => ({
       id: row.id,
@@ -371,7 +369,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(votes).where(eq(votes.id, id));
   }
 
-  private async updateVoteCount(questionId: number | null, answerId: number | null, voteType: "up" | "down"): Promise<void> {
+  private async updateVoteCount(questionId: number | null | undefined, answerId: number | null | undefined, voteType: "up" | "down"): Promise<void> {
     if (questionId) {
       const voteCount = await db
         .select({
