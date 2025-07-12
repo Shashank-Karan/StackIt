@@ -433,11 +433,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
 
+      if (message.length > 2000) {
+        return res.status(400).json({ message: "Message too long. Please keep it under 2000 characters." });
+      }
+
+      console.log("Processing AI chat request:", message.substring(0, 100) + "...");
       const aiResponse = await generateAIResponse(message);
+      console.log("AI response generated successfully");
+      
       res.json({ response: aiResponse });
-    } catch (error) {
-      console.error("Error generating AI response:", error);
-      res.status(500).json({ message: "Failed to generate AI response" });
+    } catch (error: any) {
+      console.error("Error in AI chat endpoint:", error);
+      
+      // Send the specific error message from the generateAIResponse function
+      const errorMessage = error.message || "Failed to generate AI response";
+      res.status(500).json({ message: errorMessage });
     }
   });
 

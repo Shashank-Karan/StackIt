@@ -29,11 +29,18 @@ export function AIChatbot() {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("/api/ai/chat", {
+      const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
+        credentials: "include",
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to get AI response");
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {
@@ -46,12 +53,15 @@ export function AIChatbot() {
       setMessages((prev) => [...prev, botMessage]);
     },
     onError: (error: any) => {
+      console.error("Chat error:", error);
+      
+      const errorMessage = error?.message || "Failed to get AI response. Please try again.";
+      
       toast({
         title: "Error",
-        description: "Failed to get AI response. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error("Chat error:", error);
     },
   });
 
