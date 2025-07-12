@@ -166,13 +166,13 @@ export default function QuestionDetail() {
     <div className="min-h-screen bg-gray-50">
       <Header
         onAskQuestion={handleAskQuestion}
-        onOpenChatbot={() => setIsChatbotOpen(true)}
+        onOpenChatbot={() => setIsChatbotOpen(!isChatbotOpen)}
         searchQuery=""
         onSearchChange={() => {}}
       />
       
       <div className="flex">
-        <main className={`flex-1 px-4 sm:px-6 lg:px-8 py-8 ${isAuthenticated ? 'mr-96' : 'max-w-4xl mx-auto'}`}>
+        <main className={`flex-1 px-4 sm:px-6 lg:px-8 py-8 transition-all duration-300 ${isAuthenticated && isChatbotOpen ? 'md:mr-96' : 'max-w-4xl mx-auto'}`}>
         {/* Back Button */}
         <Button 
           variant="ghost" 
@@ -366,10 +366,25 @@ export default function QuestionDetail() {
         </main>
 
         {/* AI Chatbot Sidebar */}
-        {isAuthenticated && (
-          <aside className="w-96 bg-white border-l border-gray-200 fixed right-0 top-16 bottom-0 overflow-hidden">
-            <div className="h-full">
-              <AIChatbot />
+        {isAuthenticated && isChatbotOpen && (
+          <aside className="w-full md:w-96 bg-white border-l border-gray-200 fixed right-0 top-16 bottom-0 overflow-hidden z-40 transform transition-transform duration-300 ease-in-out">
+            <div className="h-full flex flex-col">
+              {/* Sidebar Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900">AI Assistant</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsChatbotOpen(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  ×
+                </Button>
+              </div>
+              {/* Chatbot Content */}
+              <div className="flex-1 overflow-hidden">
+                <AIChatbot />
+              </div>
             </div>
           </aside>
         )}
