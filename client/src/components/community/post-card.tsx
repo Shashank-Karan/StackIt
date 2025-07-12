@@ -142,7 +142,7 @@ export function PostCard({ post }: PostCardProps) {
             className="text-gray-600 hover:text-red-500 hover:bg-red-50"
           >
             <Heart className="h-4 w-4 mr-1" />
-            {post.likes || 0}
+            {post._count?.likes || post.likes?.length || 0}
           </Button>
           
           <Button
