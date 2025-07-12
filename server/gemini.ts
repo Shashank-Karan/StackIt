@@ -23,12 +23,14 @@ export async function generateAIResponse(userMessage: string): Promise<string> {
     If the question is general knowledge, provide factual information.
     Always be polite and professional in your response.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const response = await model.generateContent(prompt);
+    const result = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: prompt,
+    });
 
     console.log("Gemini API response received successfully");
     
-    const responseText = response.response.text();
+    const responseText = result.text;
     if (!responseText) {
       console.error("Empty response from Gemini API");
       return "I'm sorry, I couldn't generate a response at the moment. Please try again.";
