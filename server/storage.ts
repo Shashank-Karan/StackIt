@@ -4,6 +4,9 @@ import {
   answers,
   votes,
   notifications,
+  posts,
+  postComments,
+  postLikes,
   type User,
   type UpsertUser,
   type Question,
@@ -14,9 +17,17 @@ import {
   type InsertVote,
   type Notification,
   type InsertNotification,
+  type Post,
+  type InsertPost,
+  type PostComment,
+  type InsertPostComment,
+  type PostLike,
+  type InsertPostLike,
   type QuestionWithAuthor,
   type AnswerWithAuthor,
   type NotificationWithQuestion,
+  type PostWithAuthor,
+  type PostCommentWithAuthor,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, ilike, count, inArray, isNull } from "drizzle-orm";
@@ -63,6 +74,26 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<void>;
   markAllNotificationsAsRead(userId: number): Promise<void>;
   getUnreadNotificationCount(userId: number): Promise<number>;
+
+  // Post operations
+  getPosts(options?: {
+    search?: string;
+    tags?: string[];
+    limit?: number;
+    offset?: number;
+  }): Promise<PostWithAuthor[]>;
+  getPost(id: number): Promise<PostWithAuthor | undefined>;
+  createPost(post: InsertPost): Promise<Post>;
+  updatePost(id: number, post: Partial<InsertPost>): Promise<Post>;
+  deletePost(id: number): Promise<void>;
+  likePost(postId: number, userId: number): Promise<void>;
+  unlikePost(postId: number, userId: number): Promise<void>;
+  isPostLikedByUser(postId: number, userId: number): Promise<boolean>;
+
+  // Post comment operations
+  getPostComments(postId: number): Promise<PostCommentWithAuthor[]>;
+  createPostComment(comment: InsertPostComment): Promise<PostComment>;
+  deletePostComment(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -614,6 +645,214 @@ export class DatabaseStorage implements IStorage {
         eq(notifications.isRead, false)
       ));
     return result?.count || 0;
+  }
+
+  // Post operations
+  async getPosts(options: {
+    search?: string;
+    tags?: string[];
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<PostWithAuthor[]> {
+    const { search, tags, limit = 20, offset = 0 } = options;
+    
+    const results = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        content: posts.content,
+        codeSnippet: posts.codeSnippet,
+        language: posts.language,
+        authorId: posts.authorId,
+        likes: posts.likes,
+        shares: posts.shares,
+        tags: posts.tags,
+        imageUrl: posts.imageUrl,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        authorName: users.name,
+        authorEmail: users.email,
+        authorUsername: users.username,
+        commentCount: count(postComments.id),
+        likeCount: count(postLikes.id),
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.authorId, users.id))
+      .leftJoin(postComments, eq(posts.id, postComments.postId))
+      .leftJoin(postLikes, eq(posts.id, postLikes.postId))
+      .where(
+        search
+          ? or(
+              ilike(posts.title, `%${search}%`),
+              ilike(posts.content, `%${search}%`)
+            )
+          : undefined
+      )
+      .groupBy(posts.id, users.id)
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const postsWithDetails = await Promise.all(
+      results.map(async (row) => {
+        const comments = await this.getPostComments(row.id);
+        const likes = await db
+          .select({
+            id: postLikes.id,
+            userId: postLikes.userId,
+            createdAt: postLikes.createdAt,
+          })
+          .from(postLikes)
+          .where(eq(postLikes.postId, row.id));
+
+        return {
+          id: row.id,
+          title: row.title,
+          content: row.content,
+          codeSnippet: row.codeSnippet,
+          language: row.language,
+          authorId: row.authorId,
+          likes: row.likes || 0,
+          shares: row.shares || 0,
+          tags: row.tags || [],
+          imageUrl: row.imageUrl,
+          createdAt: row.createdAt!,
+          updatedAt: row.updatedAt!,
+          author: {
+            id: row.authorId,
+            name: row.authorName || 'Unknown',
+            email: row.authorEmail || '',
+            username: row.authorUsername || 'unknown',
+            password: '',
+            profileImageUrl: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          comments,
+          likes,
+          _count: {
+            comments: comments.length,
+            likes: likes.length,
+          },
+        };
+      })
+    );
+
+    return postsWithDetails;
+  }
+
+  async getPost(id: number): Promise<PostWithAuthor | undefined> {
+    const [post] = await this.getPosts({ limit: 1, offset: 0 });
+    return post;
+  }
+
+  async createPost(post: InsertPost): Promise<Post> {
+    const [newPost] = await db
+      .insert(posts)
+      .values(post)
+      .returning();
+    return newPost;
+  }
+
+  async updatePost(id: number, post: Partial<InsertPost>): Promise<Post> {
+    const [updatedPost] = await db
+      .update(posts)
+      .set({ ...post, updatedAt: new Date() })
+      .where(eq(posts.id, id))
+      .returning();
+    return updatedPost;
+  }
+
+  async deletePost(id: number): Promise<void> {
+    await db.delete(posts).where(eq(posts.id, id));
+  }
+
+  async likePost(postId: number, userId: number): Promise<void> {
+    const existingLike = await db
+      .select()
+      .from(postLikes)
+      .where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)));
+
+    if (existingLike.length === 0) {
+      await db
+        .insert(postLikes)
+        .values({ postId, userId });
+      
+      // Increment likes count
+      await db
+        .update(posts)
+        .set({ likes: sql`${posts.likes} + 1` })
+        .where(eq(posts.id, postId));
+    }
+  }
+
+  async unlikePost(postId: number, userId: number): Promise<void> {
+    const deleted = await db
+      .delete(postLikes)
+      .where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)));
+
+    // Decrement likes count if a like was actually deleted
+    await db
+      .update(posts)
+      .set({ likes: sql`${posts.likes} - 1` })
+      .where(eq(posts.id, postId));
+  }
+
+  async isPostLikedByUser(postId: number, userId: number): Promise<boolean> {
+    const [like] = await db
+      .select()
+      .from(postLikes)
+      .where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)));
+    return !!like;
+  }
+
+  // Post comment operations
+  async getPostComments(postId: number): Promise<PostCommentWithAuthor[]> {
+    const results = await db
+      .select({
+        id: postComments.id,
+        postId: postComments.postId,
+        authorId: postComments.authorId,
+        content: postComments.content,
+        createdAt: postComments.createdAt,
+        authorName: users.name,
+        authorEmail: users.email,
+        authorUsername: users.username,
+      })
+      .from(postComments)
+      .leftJoin(users, eq(postComments.authorId, users.id))
+      .where(eq(postComments.postId, postId))
+      .orderBy(asc(postComments.createdAt));
+
+    return results.map((row) => ({
+      id: row.id,
+      postId: row.postId,
+      authorId: row.authorId,
+      content: row.content,
+      createdAt: row.createdAt!,
+      author: {
+        id: row.authorId,
+        name: row.authorName || 'Unknown',
+        email: row.authorEmail || '',
+        username: row.authorUsername || 'unknown',
+        password: '',
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    }));
+  }
+
+  async createPostComment(comment: InsertPostComment): Promise<PostComment> {
+    const [newComment] = await db
+      .insert(postComments)
+      .values(comment)
+      .returning();
+    return newComment;
+  }
+
+  async deletePostComment(id: number): Promise<void> {
+    await db.delete(postComments).where(eq(postComments.id, id));
   }
 }
 

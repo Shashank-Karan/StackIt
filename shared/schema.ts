@@ -85,12 +85,45 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  codeSnippet: text("code_snippet"),
+  language: varchar("language", { length: 50 }),
+  authorId: integer("author_id").notNull().references(() => users.id),
+  likes: integer("likes").default(0),
+  shares: integer("shares").default(0),
+  tags: text("tags").array().notNull().default([]),
+  imageUrl: varchar("image_url", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const postComments = pgTable("post_comments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => posts.id),
+  authorId: integer("author_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const postLikes = pgTable("post_likes", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => posts.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   questions: many(questions),
   answers: many(answers),
   votes: many(votes),
   notifications: many(notifications),
+  posts: many(posts),
+  postComments: many(postComments),
+  postLikes: many(postLikes),
 }));
 
 export const questionsRelations = relations(questions, ({ one, many }) => ({
@@ -148,6 +181,37 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }));
 
+export const postsRelations = relations(posts, ({ one, many }) => ({
+  author: one(users, {
+    fields: [posts.authorId],
+    references: [users.id],
+  }),
+  comments: many(postComments),
+  likes: many(postLikes),
+}));
+
+export const postCommentsRelations = relations(postComments, ({ one }) => ({
+  post: one(posts, {
+    fields: [postComments.postId],
+    references: [posts.id],
+  }),
+  author: one(users, {
+    fields: [postComments.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const postLikesRelations = relations(postLikes, ({ one }) => ({
+  post: one(posts, {
+    fields: [postLikes.postId],
+    references: [posts.id],
+  }),
+  user: one(users, {
+    fields: [postLikes.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -192,6 +256,24 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   isRead: true,
 });
 
+export const insertPostSchema = createInsertSchema(posts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  likes: true,
+  shares: true,
+});
+
+export const insertPostCommentSchema = createInsertSchema(postComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPostLikeSchema = createInsertSchema(postLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -205,6 +287,12 @@ export type Vote = typeof votes.$inferSelect;
 export type InsertVote = z.infer<typeof insertVoteSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Post = typeof posts.$inferSelect;
+export type InsertPost = z.infer<typeof insertPostSchema>;
+export type PostComment = typeof postComments.$inferSelect;
+export type InsertPostComment = z.infer<typeof insertPostCommentSchema>;
+export type PostLike = typeof postLikes.$inferSelect;
+export type InsertPostLike = z.infer<typeof insertPostLikeSchema>;
 
 // Extended types with relations
 export type QuestionWithAuthor = Question & {
@@ -222,4 +310,18 @@ export type AnswerWithAuthor = Answer & {
 export type NotificationWithQuestion = Notification & {
   question?: Question;
   answer?: Answer;
+};
+
+export type PostWithAuthor = Post & {
+  author: User;
+  comments: (PostComment & { author: User })[];
+  likes: PostLike[];
+  _count: {
+    comments: number;
+    likes: number;
+  };
+};
+
+export type PostCommentWithAuthor = PostComment & {
+  author: User;
 };

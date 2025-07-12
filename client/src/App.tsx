@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import QuestionDetail from "@/pages/question-detail";
+import Community from "@/pages/community";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
         <>
           <Route path="/" component={Home} />
           <Route path="/questions/:id" component={QuestionDetail} />
+          <Route path="/community" component={Community} />
         </>
       )}
       <Route component={NotFound} />

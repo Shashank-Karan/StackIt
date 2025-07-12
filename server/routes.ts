@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerUser, loginUser } from "./auth";
-import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema, registerSchema, loginSchema } from "@shared/schema";
+import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema, insertPostSchema, registerSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
 import { generateAIResponse } from "./gemini";
 
@@ -421,6 +421,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
       res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Post routes
+  app.get('/api/posts', isAuthenticated, async (req: any, res) => {
+    try {
+      const { search, tags, limit, offset } = req.query;
+      const posts = await storage.getPosts({
+        search: search as string,
+        tags: tags ? (tags as string).split(',') : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      res.status(500).json({ message: "Failed to fetch posts" });
+    }
+  });
+
+  app.get('/api/posts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const post = await storage.getPost(id);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      
+      res.json(post);
+    } catch (error) {
+      console.error("Error fetching post:", error);
+      res.status(500).json({ message: "Failed to fetch post" });
+    }
+  });
+
+  app.post('/api/posts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const postData = insertPostSchema.parse({
+        ...req.body,
+        authorId: user.id,
+      });
+      
+      const newPost = await storage.createPost(postData);
+      res.json(newPost);
+    } catch (error) {
+      console.error("Error creating post:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid post data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create post" });
+    }
+  });
+
+  app.put('/api/posts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const post = await storage.getPost(id);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.authorId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to edit this post" });
+      }
+
+      const postData = insertPostSchema.partial().parse(req.body);
+      const updatedPost = await storage.updatePost(id, postData);
+      res.json(updatedPost);
+    } catch (error) {
+      console.error("Error updating post:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid post data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update post" });
+    }
+  });
+
+  app.delete('/api/posts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const post = await storage.getPost(id);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.authorId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      await storage.deletePost(id);
+      res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+
+  app.post('/api/posts/:id/like', isAuthenticated, async (req: any, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const isLiked = await storage.isPostLikedByUser(postId, user.id);
+      
+      if (isLiked) {
+        await storage.unlikePost(postId, user.id);
+        res.json({ message: "Post unliked", liked: false });
+      } else {
+        await storage.likePost(postId, user.id);
+        res.json({ message: "Post liked", liked: true });
+      }
+    } catch (error) {
+      console.error("Error toggling post like:", error);
+      res.status(500).json({ message: "Failed to toggle post like" });
+    }
+  });
+
+  app.get('/api/posts/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const comments = await storage.getPostComments(postId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching post comments:", error);
+      res.status(500).json({ message: "Failed to fetch post comments" });
+    }
+  });
+
+  app.post('/api/posts/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const user = req.session?.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { content } = req.body;
+      if (!content || typeof content !== 'string') {
+        return res.status(400).json({ message: "Comment content is required" });
+      }
+
+      const comment = await storage.createPostComment({
+        postId,
+        authorId: user.id,
+        content,
+      });
+      
+      res.json(comment);
+    } catch (error) {
+      console.error("Error creating post comment:", error);
+      res.status(500).json({ message: "Failed to create post comment" });
     }
   });
 
