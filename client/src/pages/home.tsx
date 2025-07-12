@@ -101,7 +101,7 @@ export default function Home() {
   const totalPages = Math.ceil(questions.length / itemsPerPage);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header
         onAskQuestion={handleAskQuestion}
         onOpenChatbot={() => setIsChatbotOpen(!isChatbotOpen)}
@@ -112,11 +112,36 @@ export default function Home() {
       <div className="flex">
         {/* Main Content */}
         <main className={`flex-1 px-4 sm:px-6 lg:px-8 py-8 transition-all duration-300 ${isAuthenticated && isChatbotOpen ? 'md:mr-96' : 'max-w-7xl mx-auto'}`}>
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* Page Header */}
+          <div className="text-center space-y-4 py-8">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-600 to-primary bg-clip-text text-transparent">
+              Questions
+            </h1>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Ask questions and get answers from our knowledgeable community
+            </p>
+            {questions.length > 0 && (
+              <div className="flex items-center justify-center space-x-4 pt-2">
+                <span className="text-sm text-muted-foreground">
+                  {questions.length} {questions.length === 1 ? 'question' : 'questions'} found
+                </span>
+                {debouncedSearch && (
+                  <span className="text-sm text-primary font-medium bg-primary/10 px-3 py-1 rounded-full">
+                    Results for "{debouncedSearch}"
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Top Actions Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-4 rounded-xl border border-border/50 shadow-sm">
             <div className="flex items-center space-x-4">
-              <Button onClick={handleAskQuestion} className="sm:hidden">
+              <Button 
+                onClick={handleAskQuestion} 
+                className="sm:hidden bg-gradient-to-r from-primary to-purple-600 hover:from-purple-600 hover:to-primary transition-all shadow-md"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Ask Question
               </Button>
@@ -124,10 +149,12 @@ export default function Home() {
             
             {/* Filters */}
             <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground mr-2">Filter:</span>
               <Button
                 variant={filter === 'newest' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => handleFilterChange('newest')}
+                className={filter === 'newest' ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-muted transition-all'}
               >
                 Newest
               </Button>
@@ -135,6 +162,7 @@ export default function Home() {
                 variant={filter === 'unanswered' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => handleFilterChange('unanswered')}
+                className={filter === 'unanswered' ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-muted transition-all'}
               >
                 Unanswered
               </Button>
@@ -142,6 +170,7 @@ export default function Home() {
                 variant={filter === '' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => handleFilterChange('')}
+                className={filter === '' ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-muted transition-all'}
               >
                 All
               </Button>

@@ -27,56 +27,71 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
     : user?.email?.[0].toUpperCase() || 'A';
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white/80 backdrop-blur-md border-b border-border/50 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-18">
           {/* Logo and Navigation */}
           <div className="flex items-center space-x-8">
             <Link href="/">
-              <h1 className="text-2xl font-bold text-gray-900 hover:text-primary cursor-pointer">
-                StackIt
-              </h1>
+              <div className="flex items-center space-x-2 group cursor-pointer">
+                <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <span className="text-white font-bold text-sm">S</span>
+                </div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-primary transition-all">
+                  StackIt
+                </h1>
+              </div>
             </Link>
             
             {/* Navigation Links */}
             {isAuthenticated && (
-              <nav className="hidden md:flex items-center space-x-6">
-                <Link 
-                  href="/" 
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location === '/' ? 'text-primary' : 'text-gray-600'
-                  }`}
-                >
-                  Questions
+              <nav className="hidden md:flex items-center space-x-1">
+                <Link href="/">
+                  <Button 
+                    variant={location === '/' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`font-medium transition-all ${
+                      location === '/' 
+                        ? 'bg-primary text-primary-foreground shadow-md' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    Questions
+                  </Button>
                 </Link>
-                <Link 
-                  href="/community" 
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location === '/community' ? 'text-primary' : 'text-gray-600'
-                  }`}
-                >
-                  Community
+                <Link href="/community">
+                  <Button 
+                    variant={location === '/community' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`font-medium transition-all ${
+                      location === '/community' 
+                        ? 'bg-primary text-primary-foreground shadow-md' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    Community
+                  </Button>
                 </Link>
               </nav>
             )}
           </div>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-2xl mx-8 hidden md:block">
+          <div className="flex-1 max-w-xl mx-8 hidden md:block">
             <div className="relative">
               <Input
                 type="text"
                 placeholder={location === '/community' ? "Search posts..." : "Search questions..."}
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-10 pr-4"
+                className="pl-10 pr-4 bg-muted/50 border-border/50 focus:bg-background focus:border-primary/50 transition-all"
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             </div>
           </div>
 
-          {/* Navigation */}
-          <div className="flex items-center space-x-4">
+          {/* Actions */}
+          <div className="flex items-center space-x-3">
             {isAuthenticated ? (
               <>
                 {/* AI Chatbot Button */}
@@ -85,7 +100,7 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
                     onClick={onOpenChatbot} 
                     variant="outline" 
                     size="sm"
-                    className="hidden sm:flex"
+                    className="hidden sm:flex bg-gradient-to-r from-primary/10 to-purple-600/10 border-primary/20 hover:from-primary/20 hover:to-purple-600/20 transition-all"
                   >
                     <Bot className="h-4 w-4 mr-2" />
                     AI Assistant
@@ -93,7 +108,10 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
                 )}
 
                 {/* Ask Question Button */}
-                <Button onClick={onAskQuestion} className="hidden sm:flex">
+                <Button 
+                  onClick={onAskQuestion} 
+                  className="hidden sm:flex bg-gradient-to-r from-primary to-purple-600 hover:from-purple-600 hover:to-primary transition-all shadow-md hover:shadow-lg"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Ask Question
                 </Button>
@@ -102,18 +120,23 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
                 <NotificationDropdown />
 
                 {/* User Profile */}
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8">
+                <div className="flex items-center space-x-3 pl-3 border-l border-border/50">
+                  <Avatar className="h-9 w-9 ring-2 ring-primary/20 hover:ring-primary/40 transition-all">
                     <AvatarImage src={user?.profileImageUrl} alt={displayName} />
-                    <AvatarFallback>{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white font-semibold">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium text-gray-700 hidden sm:block">
+                  <span className="text-sm font-medium text-foreground hidden sm:block">
                     {displayName}
                   </span>
                 </div>
               </>
             ) : (
-              <Button onClick={() => window.location.href = '/api/login'}>
+              <Button 
+                onClick={() => window.location.href = '/api/login'}
+                className="bg-gradient-to-r from-primary to-purple-600 hover:from-purple-600 hover:to-primary transition-all shadow-md hover:shadow-lg"
+              >
                 Login
               </Button>
             )}
@@ -128,9 +151,9 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
               placeholder={location === '/community' ? "Search posts..." : "Search questions..."}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 pr-4"
+              className="pl-10 pr-4 bg-muted/50 border-border/50 focus:bg-background focus:border-primary/50 transition-all"
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           </div>
         </div>
       </div>

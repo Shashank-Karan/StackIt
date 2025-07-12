@@ -61,21 +61,21 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   return (
-    <Card className="bg-white rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
+    <Card className="bg-card rounded-xl shadow-sm border border-border/50 hover:shadow-lg hover:border-border transition-all duration-300 group">
       <CardContent className="p-6">
         {/* Post Header */}
         <div className="flex items-center gap-3 mb-4">
-          <Avatar className="h-10 w-10 border-2 border-gray-200">
-            <AvatarFallback className="bg-blue-600 text-white text-sm">
+          <Avatar className="h-12 w-12 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
+            <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-sm font-semibold">
               {getInitials(post.author.name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <p className="font-medium text-gray-900">{post.author.email}</p>
-            <p className="text-sm text-gray-500">{formatTimeAgo(post.createdAt)}</p>
+            <p className="font-semibold text-foreground">{post.author.email}</p>
+            <p className="text-sm text-muted-foreground">{formatTimeAgo(post.createdAt)}</p>
           </div>
           {post.language && (
-            <Badge variant="secondary" className="bg-blue-600 text-white">
+            <Badge variant="secondary" className="bg-gradient-to-r from-primary to-purple-600 text-white border-0 shadow-sm">
               {post.language}
             </Badge>
           )}
@@ -83,38 +83,42 @@ export function PostCard({ post }: PostCardProps) {
 
         {/* Post Content */}
         {post.title && (
-          <h3 className="text-lg font-semibold mb-2 text-gray-900">{post.title}</h3>
+          <h3 className="text-xl font-bold mb-3 text-foreground group-hover:text-primary transition-colors">
+            {post.title}
+          </h3>
         )}
         
-        <p className="text-gray-700 mb-4 whitespace-pre-wrap">{post.content}</p>
+        <p className="text-muted-foreground mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
 
         {/* Code Snippet */}
         {post.codeSnippet && (
           <div className="mb-4">
-            <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-200">
+            <div className="bg-accent rounded-xl overflow-hidden border border-border/50 shadow-sm">
               {/* Code Header */}
-              <div className="flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <div className="flex items-center justify-between bg-accent/50 px-4 py-3 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
                   </div>
                   {post.language && (
-                    <span className="text-gray-400 text-sm ml-2">{post.language}</span>
+                    <Badge variant="outline" className="text-xs bg-background/50">
+                      {post.language}
+                    </Badge>
                   )}
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={copyCode}
-                  className="text-gray-400 hover:text-white"
+                  className="text-muted-foreground hover:text-foreground hover:bg-background/50 transition-all"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
               {/* Code Content */}
-              <pre className="p-4 text-sm text-gray-100 overflow-x-auto">
+              <pre className="p-4 text-sm text-accent-foreground overflow-x-auto scrollbar-thin">
                 <code>{post.codeSnippet}</code>
               </pre>
             </div>
@@ -125,7 +129,11 @@ export function PostCard({ post }: PostCardProps) {
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {post.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="border-blue-500 text-blue-600 bg-blue-50">
+              <Badge 
+                key={tag} 
+                variant="outline" 
+                className="border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
+              >
                 #{tag}
               </Badge>
             ))}
@@ -133,15 +141,15 @@ export function PostCard({ post }: PostCardProps) {
         )}
 
         {/* Post Actions */}
-        <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+        <div className="flex items-center gap-4 pt-4 border-t border-border/50">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => likeMutation.mutate()}
             disabled={likeMutation.isPending}
-            className="text-gray-600 hover:text-red-500 hover:bg-red-50"
+            className="text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-all"
           >
-            <Heart className="h-4 w-4 mr-1" />
+            <Heart className="h-4 w-4 mr-1.5" />
             {post._count?.likes || post.likes?.length || 0}
           </Button>
           
@@ -149,18 +157,18 @@ export function PostCard({ post }: PostCardProps) {
             variant="ghost"
             size="sm"
             onClick={() => setShowComments(!showComments)}
-            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+            className="text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all"
           >
-            <MessageCircle className="h-4 w-4 mr-1" />
+            <MessageCircle className="h-4 w-4 mr-1.5" />
             {post._count?.comments || 0}
           </Button>
           
           <Button
             variant="ghost"
             size="sm"
-            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+            className="text-muted-foreground hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-950 transition-all"
           >
-            <Share className="h-4 w-4 mr-1" />
+            <Share className="h-4 w-4 mr-1.5" />
             Share
           </Button>
         </div>
