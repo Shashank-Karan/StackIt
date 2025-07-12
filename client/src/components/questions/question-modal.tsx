@@ -105,7 +105,7 @@ export function QuestionModal({ question, isOpen, onClose }: QuestionModalProps)
               <VotingButtons
                 itemId={question.id}
                 itemType="question"
-                votes={questionDetail?.votes || question.votes || 0}
+                votes={question.votes || 0}
                 onVoteSuccess={() => {
                   queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
                   queryClient.invalidateQueries({ queryKey: [`/api/questions/${question.id}`] });
@@ -122,15 +122,15 @@ export function QuestionModal({ question, isOpen, onClose }: QuestionModalProps)
                 <div className="flex items-center space-x-6 text-sm text-gray-500 mb-4">
                   <div className="flex items-center space-x-1">
                     <ThumbsUp className="h-4 w-4" />
-                    <span>{questionDetail?.votes || question.votes || 0} votes</span>
+                    <span>{question.votes || 0} votes</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <MessageCircle className="h-4 w-4" />
-                    <span>{questionDetail?.answers?.length || question.answers?.length || 0} answers</span>
+                    <span>{question.answers?.length || 0} answers</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Eye className="h-4 w-4" />
-                    <span>{questionDetail?.viewCount || question.viewCount || 0} views</span>
+                    <span>{question.viewCount || 0} views</span>
                   </div>
                 </div>
 
@@ -169,7 +169,7 @@ export function QuestionModal({ question, isOpen, onClose }: QuestionModalProps)
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">
-                {questionDetail?.answers?.length || question.answers?.length || 0} Answer{(questionDetail?.answers?.length || question.answers?.length || 0) !== 1 ? 's' : ''}
+                {question.answers?.length || 0} Answer{(question.answers?.length || 0) !== 1 ? 's' : ''}
               </h3>
               {isAuthenticated && (
                 <Button onClick={() => setShowAnswerForm(!showAnswerForm)}>
@@ -194,7 +194,7 @@ export function QuestionModal({ question, isOpen, onClose }: QuestionModalProps)
 
             {/* Answers List */}
             <div className="space-y-6">
-              {(questionDetail?.answers || question.answers || []).map((answer: AnswerWithAuthor) => {
+              {(question.answers || []).map((answer: AnswerWithAuthor) => {
                 const answerAuthorName = answer.author.firstName && answer.author.lastName
                   ? `${answer.author.firstName} ${answer.author.lastName}`
                   : answer.author.email || 'Anonymous';
