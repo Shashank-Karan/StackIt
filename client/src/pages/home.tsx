@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Header } from '@/components/layout/header';
 import { QuestionCard } from '@/components/questions/question-card';
-import { QuestionModal } from '@/components/questions/question-modal';
 import { AskQuestionModal } from '@/components/questions/ask-question-modal';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,8 +22,6 @@ import type { QuestionWithAuthor } from '@shared/schema';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedQuestion, setSelectedQuestion] = useState<QuestionWithAuthor | null>(null);
-  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [filter, setFilter] = useState<'newest' | 'unanswered' | ''>('newest');
   const [currentPage, setCurrentPage] = useState(1);
@@ -31,6 +29,7 @@ export default function Home() {
 
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const itemsPerPage = 10;
 
@@ -59,13 +58,7 @@ export default function Home() {
     retry: false,
   });
 
-  // Fetch individual question when modal opens
-  const { data: questionDetail } = useQuery({
-    queryKey: [`/api/questions/${selectedQuestion?.id}`],
-    enabled: !!selectedQuestion?.id && typeof selectedQuestion.id === 'number',
-    retry: false,
-    staleTime: 0, // Always fetch fresh data
-  });
+
 
   // Handle errors
   useEffect(() => {
@@ -82,8 +75,7 @@ export default function Home() {
   }, [error, toast]);
 
   const handleQuestionClick = (question: QuestionWithAuthor) => {
-    setSelectedQuestion(question);
-    setIsQuestionModalOpen(true);
+    navigate(`/questions/${question.id}`);
   };
 
   const handleAskQuestion = () => {
@@ -240,16 +232,6 @@ export default function Home() {
           )}
         </div>
       </main>
-
-      {/* Question Detail Modal */}
-      <QuestionModal
-        question={questionDetail || selectedQuestion}
-        isOpen={isQuestionModalOpen}
-        onClose={() => {
-          setIsQuestionModalOpen(false);
-          setSelectedQuestion(null);
-        }}
-      />
 
       {/* Ask Question Modal */}
       <AskQuestionModal
