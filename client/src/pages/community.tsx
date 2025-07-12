@@ -49,7 +49,7 @@ export default function Community() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <Header
         onAskQuestion={() => {}} // Not needed in community
         onOpenChatbot={() => setIsChatbotOpen(!isChatbotOpen)}
@@ -59,105 +59,119 @@ export default function Community() {
 
       <div className="flex">
         {/* Main Content */}
-        <main className={`flex-1 px-4 sm:px-6 lg:px-8 py-8 transition-all duration-300 ${isAuthenticated && isChatbotOpen ? 'md:mr-96' : 'max-w-7xl mx-auto'}`}>
-          {/* Header Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">Developer Community</h1>
-            <p className="text-lg text-blue-200 mb-8">
-              Share code snippets, get feedback, and learn from other developers.
-            </p>
+        <main className={`flex-1 transition-all duration-300 ${isAuthenticated && isChatbotOpen ? 'md:mr-96' : ''}`}>
+          {/* Hero Section */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">Developer Community</h1>
+              <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+                Share code snippets, get feedback, and learn from other developers worldwide.
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Create Post Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="bg-blue-800/50 rounded-lg p-6 backdrop-blur-sm border border-blue-700/50">
-                <h2 className="text-xl font-semibold mb-4">Create Post</h2>
-                <textarea
-                  placeholder="What's on your mind? Share a code snippet, ask a question..."
-                  className="w-full h-24 p-3 rounded-lg bg-blue-900/50 border border-blue-600 text-white placeholder-blue-300 resize-none"
-                  readOnly
-                  onClick={handleCreatePost}
-                />
-                <div className="mt-4 space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Optional: Add code snippet..."
-                    className="w-full p-3 rounded-lg bg-blue-900/50 border border-blue-600 text-white placeholder-blue-300"
-                    readOnly
-                    onClick={handleCreatePost}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Language (Optional)"
-                    className="w-full p-3 rounded-lg bg-blue-900/50 border border-blue-600 text-white placeholder-blue-300"
-                    readOnly
-                    onClick={handleCreatePost}
-                  />
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="bg-blue-900/50 border-blue-600 text-blue-200 hover:bg-blue-800/50"
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              {/* Create Post Card */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-24">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Create Post</h2>
+                    <div 
+                      className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
                       onClick={handleCreatePost}
                     >
-                      📷 Image
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="bg-blue-900/50 border-blue-600 text-blue-200 hover:bg-blue-800/50"
-                      onClick={handleCreatePost}
-                    >
-                      🎥 Video
-                    </Button>
+                      <textarea
+                        placeholder="What's on your mind? Share a code snippet, ask a question..."
+                        className="w-full h-20 bg-transparent border-none resize-none text-gray-700 placeholder-gray-500 focus:outline-none"
+                        readOnly
+                      />
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      <input
+                        type="text"
+                        placeholder="Optional: Add code snippet..."
+                        className="w-full p-3 rounded-lg border border-gray-300 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        readOnly
+                        onClick={handleCreatePost}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Language (Optional)"
+                        className="w-full p-3 rounded-lg border border-gray-300 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        readOnly
+                        onClick={handleCreatePost}
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                          onClick={handleCreatePost}
+                        >
+                          📷 Image
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                          onClick={handleCreatePost}
+                        >
+                          🎥 Video
+                        </Button>
+                      </div>
+                      <Button 
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={handleCreatePost}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Post
+                      </Button>
+                    </div>
                   </div>
-                  <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={handleCreatePost}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Post
-                  </Button>
                 </div>
               </div>
-            </div>
 
-            {/* Posts Feed */}
-            <div className="lg:col-span-2">
-              <div className="space-y-6">
-                {isLoading ? (
-                  // Loading skeletons
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="bg-blue-800/50 rounded-lg p-6 backdrop-blur-sm border border-blue-700/50">
-                      <div className="flex items-center gap-3 mb-4">
-                        <Skeleton className="h-10 w-10 rounded-full bg-blue-700" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-32 bg-blue-700" />
-                          <Skeleton className="h-3 w-20 bg-blue-700" />
+              {/* Posts Feed */}
+              <div className="lg:col-span-3">
+                <div className="space-y-6">
+                  {isLoading ? (
+                    // Loading skeletons
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Skeleton className="h-10 w-10 rounded-full bg-gray-200" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-32 bg-gray-200" />
+                            <Skeleton className="h-3 w-20 bg-gray-200" />
+                          </div>
                         </div>
+                        <Skeleton className="h-20 w-full mb-4 bg-gray-200" />
+                        <Skeleton className="h-32 w-full bg-gray-200" />
                       </div>
-                      <Skeleton className="h-20 w-full mb-4 bg-blue-700" />
-                      <Skeleton className="h-32 w-full bg-blue-700" />
+                    ))
+                  ) : posts && posts.length > 0 ? (
+                    posts.map((post: PostWithAuthor) => (
+                      <PostCard key={post.id} post={post} />
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-12 text-center">
+                      <div className="text-6xl mb-4">💬</div>
+                      <h3 className="text-2xl font-semibold text-gray-900 mb-2">No posts yet</h3>
+                      <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                        Be the first to share something with the community! Ask questions, share code snippets, or start a discussion.
+                      </p>
+                      <Button 
+                        onClick={handleCreatePost}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
+                        size="lg"
+                      >
+                        <Plus className="h-5 w-5 mr-2" />
+                        Create First Post
+                      </Button>
                     </div>
-                  ))
-                ) : posts && posts.length > 0 ? (
-                  posts.map((post: PostWithAuthor) => (
-                    <PostCard key={post.id} post={post} />
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
-                    <p className="text-blue-200 mb-4">Be the first to share something with the community!</p>
-                    <Button 
-                      onClick={handleCreatePost}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Post
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -61,18 +61,18 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   return (
-    <Card className="bg-blue-800/50 backdrop-blur-sm border border-blue-700/50 text-white">
+    <Card className="bg-white rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
       <CardContent className="p-6">
         {/* Post Header */}
         <div className="flex items-center gap-3 mb-4">
-          <Avatar className="h-10 w-10 border-2 border-blue-600">
+          <Avatar className="h-10 w-10 border-2 border-gray-200">
             <AvatarFallback className="bg-blue-600 text-white text-sm">
               {getInitials(post.author.name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <p className="font-medium text-blue-100">{post.author.email}</p>
-            <p className="text-sm text-blue-300">{formatTimeAgo(post.createdAt)}</p>
+            <p className="font-medium text-gray-900">{post.author.email}</p>
+            <p className="text-sm text-gray-500">{formatTimeAgo(post.createdAt)}</p>
           </div>
           {post.language && (
             <Badge variant="secondary" className="bg-blue-600 text-white">
@@ -83,15 +83,15 @@ export function PostCard({ post }: PostCardProps) {
 
         {/* Post Content */}
         {post.title && (
-          <h3 className="text-lg font-semibold mb-2 text-white">{post.title}</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-900">{post.title}</h3>
         )}
         
-        <p className="text-blue-100 mb-4 whitespace-pre-wrap">{post.content}</p>
+        <p className="text-gray-700 mb-4 whitespace-pre-wrap">{post.content}</p>
 
         {/* Code Snippet */}
         {post.codeSnippet && (
           <div className="mb-4">
-            <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
+            <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-200">
               {/* Code Header */}
               <div className="flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700">
                 <div className="flex items-center gap-2">
@@ -125,7 +125,7 @@ export function PostCard({ post }: PostCardProps) {
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {post.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="border-blue-500 text-blue-200">
+              <Badge key={tag} variant="outline" className="border-blue-500 text-blue-600 bg-blue-50">
                 #{tag}
               </Badge>
             ))}
@@ -133,13 +133,13 @@ export function PostCard({ post }: PostCardProps) {
         )}
 
         {/* Post Actions */}
-        <div className="flex items-center gap-4 pt-4 border-t border-blue-700/50">
+        <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => likeMutation.mutate()}
             disabled={likeMutation.isPending}
-            className="text-blue-200 hover:text-red-400 hover:bg-blue-800/50"
+            className="text-gray-600 hover:text-red-500 hover:bg-red-50"
           >
             <Heart className="h-4 w-4 mr-1" />
             {post.likes || 0}
@@ -149,7 +149,7 @@ export function PostCard({ post }: PostCardProps) {
             variant="ghost"
             size="sm"
             onClick={() => setShowComments(!showComments)}
-            className="text-blue-200 hover:text-blue-100 hover:bg-blue-800/50"
+            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
           >
             <MessageCircle className="h-4 w-4 mr-1" />
             {post._count?.comments || 0}
@@ -158,7 +158,7 @@ export function PostCard({ post }: PostCardProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="text-blue-200 hover:text-blue-100 hover:bg-blue-800/50"
+            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
           >
             <Share className="h-4 w-4 mr-1" />
             Share
@@ -167,31 +167,31 @@ export function PostCard({ post }: PostCardProps) {
 
         {/* Comments Section (if expanded) */}
         {showComments && (
-          <div className="mt-4 pt-4 border-t border-blue-700/50">
+          <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="space-y-3">
               {post.comments && post.comments.length > 0 ? (
                 post.comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3">
-                    <Avatar className="h-8 w-8 border border-blue-600">
+                    <Avatar className="h-8 w-8 border border-gray-200">
                       <AvatarFallback className="bg-blue-600 text-white text-xs">
                         {getInitials(comment.author.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <div className="bg-blue-900/50 rounded-lg p-3">
-                        <p className="text-sm font-medium text-blue-100 mb-1">
+                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <p className="text-sm font-medium text-gray-900 mb-1">
                           {comment.author.name}
                         </p>
-                        <p className="text-sm text-blue-200">{comment.content}</p>
+                        <p className="text-sm text-gray-700">{comment.content}</p>
                       </div>
-                      <p className="text-xs text-blue-400 mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         {formatTimeAgo(comment.createdAt)}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-blue-300 text-sm text-center py-4">
+                <p className="text-gray-500 text-sm text-center py-4">
                   No comments yet. Be the first to comment!
                 </p>
               )}

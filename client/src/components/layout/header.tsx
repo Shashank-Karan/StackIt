@@ -66,7 +66,7 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
             <div className="relative">
               <Input
                 type="text"
-                placeholder="Search questions..."
+                placeholder={location === '/community' ? "Search posts..." : "Search questions..."}
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="pl-10 pr-4"
@@ -125,7 +125,7 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
           <div className="relative">
             <Input
               type="text"
-              placeholder="Search questions..."
+              placeholder={location === '/community' ? "Search posts..." : "Search questions..."}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pl-10 pr-4"
