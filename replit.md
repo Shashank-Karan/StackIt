@@ -8,6 +8,60 @@ StackIt is a full-stack question and answer platform built with a modern tech st
 
 Preferred communication style: Simple, everyday language.
 
+## Development Prompts & Scenarios
+
+### 1. Project Planning Prompts
+
+#### Project Structure
+Create a folder structure for a full-stack web application called StackIt, with a React frontend and Node.js backend using Express. Include folders for components, routes, models, and utilities.
+
+#### Database Schema
+Design a PostgreSQL schema for a Q&A forum with users, questions, answers, tags, and notifications. Include relationships and constraints.
+
+### 2. Backend Development Prompts
+
+#### User Authentication (JWT)
+Write an Express.js route to register and log in users using JWT for authentication. Passwords should be hashed using bcrypt.
+
+#### Post a Question
+Create an Express route that allows authenticated users to post a question with a title, rich text description (HTML), and tags.
+
+#### Vote on an Answer
+Write an API endpoint in Express that allows a logged-in user to upvote or downvote an answer. Prevent users from voting multiple times.
+
+#### Notifications
+How do I implement a real-time notification system using Socket.IO in Node.js when someone answers your question or mentions @username in a comment?
+
+### 3. Frontend Development Prompts
+
+#### Rich Text Editor
+Integrate a rich text editor like TipTap or Quill in a React app to allow users to format their questions and answers. The editor should support bold, italic, strikethrough, lists, emoji, links, image upload, and alignment.
+
+#### Tag Selection Input
+Create a multi-select dropdown in React using react-select to allow users to choose multiple tags when posting a question.
+
+#### Notification Dropdown
+Build a notification dropdown component in React that shows unread notifications with a bell icon, similar to Stack Overflow.
+
+### 4. Admin Panel Prompts
+Create an admin dashboard in React with pages to manage flagged content, ban users, and broadcast messages using a REST API.
+
+### 5. Testing & Deployment Prompts
+
+#### Testing API
+Write unit tests for the question posting API using Jest and Supertest in an Express app.
+
+#### Deployment
+How can I deploy a React frontend on Vercel and an Express backend on Render, and connect them securely using environment variables?
+
+### 6. Bonus Features (Optional)
+
+#### Gamification / Badges
+Add a badge system that rewards users based on their activity: first question, top answer, most upvotes, etc.
+
+#### Search Functionality
+Implement full-text search in PostgreSQL to search questions by title and tags using a /search?q= endpoint.
+
 ## System Architecture
 
 ### Frontend Architecture
