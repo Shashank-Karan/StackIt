@@ -116,7 +116,7 @@ export class DatabaseStorage implements IStorage {
     const { search, tags, filter, limit = 20, offset = 0 } = options;
 
     try {
-      // Simple query to avoid Drizzle relational issues
+      // Simple query first to avoid Drizzle relational issues
       const questionsData = await db
         .select({
           id: questions.id,
@@ -281,6 +281,29 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
+      })
+      .from(questions)
+      .leftJoin(users, eq(questions.authorId, users.id))
+      .where(eq(questions.id, id));
+
+    if (!question) return undefined;
+
+    const questionAnswers = await this.getAnswersByQuestionId(id);
+
+    return {
+      ...question,
+      author: question.author!,
+      answers: questionAnswers,
+      _count: {
+        answers: questionAnswers.length,
+      },
+    };
+  }
 
   async createQuestion(question: InsertQuestion): Promise<Question> {
     const [newQuestion] = await db
@@ -306,7 +329,7 @@ export class DatabaseStorage implements IStorage {
   async incrementViewCount(id: number): Promise<void> {
     await db
       .update(questions)
-      .set({ views: sql`${questions.views} + 1` })
+      .set({ viewCount: sql`${questions.viewCount} + 1` })
       .where(eq(questions.id, id));
   }
 
@@ -322,9 +345,15 @@ export class DatabaseStorage implements IStorage {
         isAccepted: answers.isAccepted,
         createdAt: answers.createdAt,
         updatedAt: answers.updatedAt,
-        authorName: users.name,
-        authorUsername: users.username,
-        authorProfileImageUrl: users.profileImageUrl,
+        author: {
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
       })
       .from(answers)
       .leftJoin(users, eq(answers.authorId, users.id))
@@ -332,24 +361,8 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(answers.isAccepted), desc(answers.votes), asc(answers.createdAt));
 
     return results.map((row) => ({
-      id: row.id,
-      content: row.content,
-      questionId: row.questionId,
-      authorId: row.authorId,
-      votes: row.votes || 0,
-      isAccepted: row.isAccepted || false,
-      createdAt: row.createdAt!,
-      updatedAt: row.updatedAt!,
-      author: {
-        id: row.authorId,
-        name: row.authorName || 'Unknown',
-        username: row.authorUsername || 'unknown',
-        profileImageUrl: row.authorProfileImageUrl,
-        email: null,
-        password: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      ...row,
+      author: row.author!,
     }));
   }
 
@@ -375,37 +388,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async acceptAnswer(questionId: number, answerId: number): Promise<void> {
-    // First, mark all answers for this question as not accepted
-    await db
-      .update(answers)
-      .set({ isAccepted: false })
-      .where(eq(answers.questionId, questionId));
+    await db.transaction(async (tx) => {
+      // Mark all answers as not accepted
+      await tx
+        .update(answers)
+        .set({ isAccepted: false })
+        .where(eq(answers.questionId, questionId));
 
-    // Then mark the specific answer as accepted
-    await db
-      .update(answers)
-      .set({ isAccepted: true })
-      .where(eq(answers.id, answerId));
+      // Mark the specific answer as accepted
+      await tx
+        .update(answers)
+        .set({ isAccepted: true })
+        .where(eq(answers.id, answerId));
 
-    // Update the question's accepted answer ID
-    await db
-      .update(questions)
-      .set({ acceptedAnswerId: answerId })
-      .where(eq(questions.id, questionId));
+      // Update the question's accepted answer
+      await tx
+        .update(questions)
+        .set({ acceptedAnswerId: answerId })
+        .where(eq(questions.id, questionId));
+    });
   }
 
   // Vote operations
   async getVote(userId: number, questionId?: number, answerId?: number): Promise<Vote | undefined> {
-    let query = db.select().from(votes).where(eq(votes.userId, userId));
-
+    const conditions = [eq(votes.userId, userId)];
+    
     if (questionId) {
-      query = query.where(eq(votes.questionId, questionId));
+      conditions.push(eq(votes.questionId, questionId));
     }
+    
     if (answerId) {
-      query = query.where(eq(votes.answerId, answerId));
+      conditions.push(eq(votes.answerId, answerId));
     }
 
-    const [vote] = await query;
+    const [vote] = await db
+      .select()
+      .from(votes)
+      .where(and(...conditions));
+
     return vote;
   }
 
@@ -414,8 +434,10 @@ export class DatabaseStorage implements IStorage {
       .insert(votes)
       .values(vote)
       .returning();
-    
+
+    // Update vote count
     await this.updateVoteCount(vote.questionId, vote.answerId, vote.voteType);
+
     return newVote;
   }
 
@@ -425,40 +447,29 @@ export class DatabaseStorage implements IStorage {
       .set({ voteType })
       .where(eq(votes.id, id))
       .returning();
-    
+
+    // Update vote count
     await this.updateVoteCount(updatedVote.questionId, updatedVote.answerId, voteType);
+
     return updatedVote;
   }
 
   async deleteVote(id: number): Promise<void> {
-    const [vote] = await db.select().from(votes).where(eq(votes.id, id));
     await db.delete(votes).where(eq(votes.id, id));
-    
-    if (vote) {
-      await this.updateVoteCount(vote.questionId, vote.answerId, vote.voteType === "up" ? "down" : "up");
-    }
   }
 
   private async updateVoteCount(questionId: number | null | undefined, answerId: number | null | undefined, voteType: "up" | "down"): Promise<void> {
     if (questionId) {
-      const totalVotes = await db
-        .select({ count: count(votes.id) })
+      const voteCount = await db
+        .select({
+          upVotes: sql<number>`COUNT(CASE WHEN ${votes.voteType} = 'up' THEN 1 END)`,
+          downVotes: sql<number>`COUNT(CASE WHEN ${votes.voteType} = 'down' THEN 1 END)`,
+        })
         .from(votes)
-        .where(and(
-          eq(votes.questionId, questionId),
-          eq(votes.voteType, "up")
-        ));
-      
-      const downVotes = await db
-        .select({ count: count(votes.id) })
-        .from(votes)
-        .where(and(
-          eq(votes.questionId, questionId),
-          eq(votes.voteType, "down")
-        ));
+        .where(eq(votes.questionId, questionId));
 
-      const netVotes = (totalVotes[0]?.count || 0) - (downVotes[0]?.count || 0);
-      
+      const netVotes = Number(voteCount[0].upVotes) - Number(voteCount[0].downVotes);
+
       await db
         .update(questions)
         .set({ votes: netVotes })
@@ -466,24 +477,16 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (answerId) {
-      const totalVotes = await db
-        .select({ count: count(votes.id) })
+      const voteCount = await db
+        .select({
+          upVotes: sql<number>`COUNT(CASE WHEN ${votes.voteType} = 'up' THEN 1 END)`,
+          downVotes: sql<number>`COUNT(CASE WHEN ${votes.voteType} = 'down' THEN 1 END)`,
+        })
         .from(votes)
-        .where(and(
-          eq(votes.answerId, answerId),
-          eq(votes.voteType, "up")
-        ));
-      
-      const downVotes = await db
-        .select({ count: count(votes.id) })
-        .from(votes)
-        .where(and(
-          eq(votes.answerId, answerId),
-          eq(votes.voteType, "down")
-        ));
+        .where(eq(votes.answerId, answerId));
 
-      const netVotes = (totalVotes[0]?.count || 0) - (downVotes[0]?.count || 0);
-      
+      const netVotes = Number(voteCount[0].upVotes) - Number(voteCount[0].downVotes);
+
       await db
         .update(answers)
         .set({ votes: netVotes })
@@ -504,10 +507,32 @@ export class DatabaseStorage implements IStorage {
         answerId: notifications.answerId,
         isRead: notifications.isRead,
         createdAt: notifications.createdAt,
-        questionTitle: questions.title,
+        question: {
+          id: questions.id,
+          title: questions.title,
+          description: questions.description,
+          authorId: questions.authorId,
+          tags: questions.tags,
+          votes: questions.votes,
+          viewCount: questions.viewCount,
+          acceptedAnswerId: questions.acceptedAnswerId,
+          createdAt: questions.createdAt,
+          updatedAt: questions.updatedAt,
+        },
+        answer: {
+          id: answers.id,
+          content: answers.content,
+          questionId: answers.questionId,
+          authorId: answers.authorId,
+          votes: answers.votes,
+          isAccepted: answers.isAccepted,
+          createdAt: answers.createdAt,
+          updatedAt: answers.updatedAt,
+        },
       })
       .from(notifications)
       .leftJoin(questions, eq(notifications.questionId, questions.id))
+      .leftJoin(answers, eq(notifications.answerId, answers.id))
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt))
       .limit(limit);
@@ -520,20 +545,10 @@ export class DatabaseStorage implements IStorage {
       message: row.message,
       questionId: row.questionId,
       answerId: row.answerId,
-      isRead: row.isRead || false,
-      createdAt: row.createdAt!,
-      question: row.questionTitle ? {
-        id: row.questionId!,
-        title: row.questionTitle,
-        description: '',
-        tags: [],
-        votes: 0,
-        views: 0,
-        authorId: 0,
-        acceptedAnswerId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } : undefined,
+      isRead: row.isRead,
+      createdAt: row.createdAt,
+      question: row.question || undefined,
+      answer: row.answer || undefined,
     }));
   }
 
@@ -561,13 +576,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUnreadNotificationCount(userId: number): Promise<number> {
     const [result] = await db
-      .select({ count: count(notifications.id) })
+      .select({ count: sql<number>`COUNT(*)` })
       .from(notifications)
-      .where(and(
-        eq(notifications.userId, userId),
-        eq(notifications.isRead, false)
-      ));
-    return result?.count || 0;
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+
+    return Number(result.count);
   }
 }
 

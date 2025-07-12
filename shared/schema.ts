@@ -44,7 +44,7 @@ export const questions = pgTable("questions", {
   authorId: integer("author_id").notNull().references(() => users.id),
   tags: text("tags").array().notNull().default([]),
   votes: integer("votes").default(0),
-  viewCount: integer("view_count").default(0),
+  views: integer("views").default(0),
   acceptedAnswerId: integer("accepted_answer_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
