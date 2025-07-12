@@ -83,9 +83,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: UpsertUser): Promise<User> {
+    // For compatibility with both Node.js and Python systems,
+    // store the password in both fields
+    const userDataWithBothPasswords = {
+      ...userData,
+      passwordHash: userData.password, // Store password in both fields for compatibility
+    };
+    
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(userDataWithBothPasswords)
       .returning();
     return user;
   }
