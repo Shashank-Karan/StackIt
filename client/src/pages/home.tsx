@@ -4,8 +4,10 @@ import { useLocation } from 'wouter';
 import { Header } from '@/components/layout/header';
 import { QuestionCard } from '@/components/questions/question-card';
 import { AskQuestionModal } from '@/components/questions/ask-question-modal';
+import { AIChatbot } from '@/components/ai/ai-chatbot';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Pagination, 
   PaginationContent, 
@@ -14,7 +16,7 @@ import {
   PaginationNext, 
   PaginationPrevious 
 } from '@/components/ui/pagination';
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, Bot } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { isUnauthorizedError } from '@/lib/authUtils';
@@ -23,6 +25,7 @@ import type { QuestionWithAuthor } from '@shared/schema';
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [filter, setFilter] = useState<'newest' | 'unanswered' | ''>('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -101,6 +104,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <Header
         onAskQuestion={handleAskQuestion}
+        onOpenChatbot={() => setIsChatbotOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -233,11 +237,34 @@ export default function Home() {
         </div>
       </main>
 
+      {/* Floating AI Chatbot Button */}
+      {isAuthenticated && (
+        <Button
+          onClick={() => setIsChatbotOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-50"
+          size="icon"
+        >
+          <Bot className="h-6 w-6" />
+        </Button>
+      )}
+
       {/* Ask Question Modal */}
       <AskQuestionModal
         isOpen={isAskModalOpen}
         onClose={() => setIsAskModalOpen(false)}
       />
+
+      {/* AI Chatbot Modal */}
+      <Dialog open={isChatbotOpen} onOpenChange={setIsChatbotOpen}>
+        <DialogContent className="max-w-2xl h-[80vh] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>AI Assistant</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 p-6 pt-2">
+            <AIChatbot />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NotificationDropdown } from './notification-dropdown';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Bot } from 'lucide-react';
 
 interface HeaderProps {
   onAskQuestion: () => void;
+  onOpenChatbot?: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
-export function Header({ onAskQuestion, searchQuery, onSearchChange }: HeaderProps) {
+export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChange }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
 
@@ -56,6 +57,19 @@ export function Header({ onAskQuestion, searchQuery, onSearchChange }: HeaderPro
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
+                {/* AI Chatbot Button */}
+                {onOpenChatbot && (
+                  <Button 
+                    onClick={onOpenChatbot} 
+                    variant="outline" 
+                    size="sm"
+                    className="hidden sm:flex"
+                  >
+                    <Bot className="h-4 w-4 mr-2" />
+                    AI Assistant
+                  </Button>
+                )}
+
                 {/* Ask Question Button */}
                 <Button onClick={onAskQuestion} className="hidden sm:flex">
                   <Plus className="h-4 w-4 mr-2" />

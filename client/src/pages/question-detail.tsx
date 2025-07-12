@@ -4,10 +4,12 @@ import { useParams, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Eye, MessageCircle, ThumbsUp, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, Eye, MessageCircle, ThumbsUp, Check, Bot } from 'lucide-react';
 import { VotingButtons } from '@/components/questions/voting-buttons';
 import { AnswerForm } from '@/components/questions/answer-form';
 import { AskQuestionModal } from '@/components/questions/ask-question-modal';
+import { AIChatbot } from '@/components/ai/ai-chatbot';
 import { Header } from '@/components/layout/header';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +22,7 @@ export default function QuestionDetail() {
   const [, navigate] = useLocation();
   const [showAnswerForm, setShowAnswerForm] = useState(false);
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -106,6 +109,7 @@ export default function QuestionDetail() {
       <div className="min-h-screen bg-gray-50">
         <Header
           onAskQuestion={handleAskQuestion}
+          onOpenChatbot={() => setIsChatbotOpen(true)}
           searchQuery=""
           onSearchChange={() => {}}
         />
@@ -126,6 +130,7 @@ export default function QuestionDetail() {
       <div className="min-h-screen bg-gray-50">
         <Header
           onAskQuestion={handleAskQuestion}
+          onOpenChatbot={() => setIsChatbotOpen(true)}
           searchQuery=""
           onSearchChange={() => {}}
         />
@@ -161,6 +166,7 @@ export default function QuestionDetail() {
     <div className="min-h-screen bg-gray-50">
       <Header
         onAskQuestion={handleAskQuestion}
+        onOpenChatbot={() => setIsChatbotOpen(true)}
         searchQuery=""
         onSearchChange={() => {}}
       />
@@ -358,11 +364,34 @@ export default function QuestionDetail() {
         </div>
       </main>
 
+      {/* Floating AI Chatbot Button */}
+      {isAuthenticated && (
+        <Button
+          onClick={() => setIsChatbotOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-50"
+          size="icon"
+        >
+          <Bot className="h-6 w-6" />
+        </Button>
+      )}
+
       {/* Ask Question Modal */}
       <AskQuestionModal
         isOpen={isAskModalOpen}
         onClose={() => setIsAskModalOpen(false)}
       />
+
+      {/* AI Chatbot Modal */}
+      <Dialog open={isChatbotOpen} onOpenChange={setIsChatbotOpen}>
+        <DialogContent className="max-w-2xl h-[80vh] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>AI Assistant</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 p-6 pt-2">
+            <AIChatbot />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

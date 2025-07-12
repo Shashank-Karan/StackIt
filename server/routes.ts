@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerUser, loginUser } from "./auth";
 import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema, registerSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
+import { generateAIResponse } from "./gemini";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -420,6 +421,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
       res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // AI Chatbot routes
+  app.post('/api/ai/chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const { message } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      const aiResponse = await generateAIResponse(message);
+      res.json({ response: aiResponse });
+    } catch (error) {
+      console.error("Error generating AI response:", error);
+      res.status(500).json({ message: "Failed to generate AI response" });
     }
   });
 
