@@ -31,6 +31,8 @@ const createPostSchema = z.object({
   codeSnippet: z.string().optional(),
   language: z.string().optional(),
   tags: z.array(z.string()).default([]),
+  imageUrls: z.array(z.string()).default([]),
+  videoUrls: z.array(z.string()).default([]),
 });
 
 type CreatePostFormData = z.infer<typeof createPostSchema>;
@@ -64,10 +66,27 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostFormData) => {
+      // Create FormData to handle file uploads
+      const formData = new FormData();
+      formData.append('title', data.title);
+      formData.append('content', data.content);
+      if (data.codeSnippet) formData.append('codeSnippet', data.codeSnippet);
+      if (data.language) formData.append('language', data.language);
+      formData.append('tags', JSON.stringify(currentTags));
+      
+      // Add image files
+      selectedImages.forEach((image, index) => {
+        formData.append(`images`, image);
+      });
+      
+      // Add video files
+      selectedVideos.forEach((video, index) => {
+        formData.append(`videos`, video);
+      });
+
       const response = await fetch('/api/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, tags: currentTags }),
+        body: formData,
         credentials: 'include',
       });
       

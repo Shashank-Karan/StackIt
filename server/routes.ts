@@ -1,12 +1,48 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerUser, loginUser } from "./auth";
 import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema, insertPostSchema, registerSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
 import { generateAIResponse } from "./gemini";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for file uploads
+const storage_multer = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage_multer,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image and video files are allowed!'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
   // Auth middleware
   setupAuth(app);
 
@@ -467,15 +503,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/posts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/posts', isAuthenticated, upload.fields([
+    { name: 'images', maxCount: 5 },
+    { name: 'videos', maxCount: 2 }
+  ]), async (req: any, res) => {
     try {
       const user = req.session?.user;
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
+      // Parse tags from JSON string
+      let tags = [];
+      if (req.body.tags) {
+        try {
+          tags = JSON.parse(req.body.tags);
+        } catch (e) {
+          tags = [];
+        }
+      }
+      
+      // Process uploaded files
+      const imageUrls: string[] = [];
+      const videoUrls: string[] = [];
+      
+      if (req.files) {
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        
+        if (files.images) {
+          files.images.forEach(file => {
+            imageUrls.push(`/uploads/${file.filename}`);
+          });
+        }
+        
+        if (files.videos) {
+          files.videos.forEach(file => {
+            videoUrls.push(`/uploads/${file.filename}`);
+          });
+        }
+      }
+      
       const postData = insertPostSchema.parse({
-        ...req.body,
+        title: req.body.title,
+        content: req.body.content,
+        codeSnippet: req.body.codeSnippet || null,
+        language: req.body.language || null,
+        tags,
+        imageUrls,
+        videoUrls,
         authorId: user.id,
       });
       

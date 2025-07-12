@@ -89,6 +89,46 @@ export function PostCard({ post }: PostCardProps) {
         )}
         
         <p className="text-muted-foreground mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+        
+        {/* Media Attachments */}
+        {((post.imageUrls && post.imageUrls.length > 0) || (post.videoUrls && post.videoUrls.length > 0)) && (
+          <div className="mb-4 space-y-4">
+            {/* Images */}
+            {post.imageUrls && post.imageUrls.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {post.imageUrls.map((imageUrl, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={imageUrl}
+                      alt={`Image ${index + 1}`}
+                      className="w-full h-48 object-cover rounded-lg border border-border/50 shadow-sm group-hover:shadow-md transition-all cursor-pointer"
+                      onClick={() => window.open(imageUrl, '_blank')}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 rounded-lg transition-all" />
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Videos */}
+            {post.videoUrls && post.videoUrls.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {post.videoUrls.map((videoUrl, index) => (
+                  <div key={index} className="relative">
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="w-full h-64 rounded-lg border border-border/50 shadow-sm"
+                      style={{ objectFit: 'cover' }}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Code Snippet */}
         {post.codeSnippet && (

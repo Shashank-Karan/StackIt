@@ -11,6 +11,14 @@ UI Design Preference: Modern, professional design with clean aesthetics, gradien
 
 ## Recent Changes (January 2025)
 
+### Media Display Fix - January 12, 2025
+- **Fixed Media Attachments**: Images and videos now display properly in community posts
+- **Database Schema Update**: Added imageUrls and videoUrls array fields to posts table
+- **File Upload System**: Implemented multer-based file upload with proper storage
+- **Media Display Component**: Added responsive grid layout for images and videos in PostCard
+- **Full Resolution Support**: Images and videos display in original quality with proper responsive sizing
+- **Interactive Media**: Images open in new tab when clicked, videos have native controls
+
 ### Major UI Overhaul - January 12, 2025
 - **Complete Design System Upgrade**: Implemented modern purple-blue gradient theme
 - **Enhanced Color Scheme**: Updated CSS variables with sophisticated color palette

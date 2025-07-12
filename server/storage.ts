@@ -667,7 +667,8 @@ export class DatabaseStorage implements IStorage {
         likes: posts.likes,
         shares: posts.shares,
         tags: posts.tags,
-        imageUrl: posts.imageUrl,
+        imageUrls: posts.imageUrls,
+        videoUrls: posts.videoUrls,
         createdAt: posts.createdAt,
         updatedAt: posts.updatedAt,
         authorName: users.name,
@@ -715,7 +716,8 @@ export class DatabaseStorage implements IStorage {
           likes: row.likes || 0,
           shares: row.shares || 0,
           tags: row.tags || [],
-          imageUrl: row.imageUrl,
+          imageUrls: row.imageUrls || [],
+          videoUrls: row.videoUrls || [],
           createdAt: row.createdAt!,
           updatedAt: row.updatedAt!,
           author: {
@@ -742,8 +744,75 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPost(id: number): Promise<PostWithAuthor | undefined> {
-    const [post] = await this.getPosts({ limit: 1, offset: 0 });
-    return post;
+    const results = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        content: posts.content,
+        codeSnippet: posts.codeSnippet,
+        language: posts.language,
+        authorId: posts.authorId,
+        likes: posts.likes,
+        shares: posts.shares,
+        tags: posts.tags,
+        imageUrls: posts.imageUrls,
+        videoUrls: posts.videoUrls,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        authorName: users.name,
+        authorEmail: users.email,
+        authorUsername: users.username,
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.authorId, users.id))
+      .where(eq(posts.id, id));
+
+    if (results.length === 0) {
+      return undefined;
+    }
+
+    const row = results[0];
+    const comments = await this.getPostComments(row.id);
+    const likes = await db
+      .select({
+        id: postLikes.id,
+        userId: postLikes.userId,
+        createdAt: postLikes.createdAt,
+      })
+      .from(postLikes)
+      .where(eq(postLikes.postId, row.id));
+
+    return {
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      codeSnippet: row.codeSnippet,
+      language: row.language,
+      authorId: row.authorId,
+      likes: row.likes || 0,
+      shares: row.shares || 0,
+      tags: row.tags || [],
+      imageUrls: row.imageUrls || [],
+      videoUrls: row.videoUrls || [],
+      createdAt: row.createdAt!,
+      updatedAt: row.updatedAt!,
+      author: {
+        id: row.authorId,
+        name: row.authorName || 'Unknown',
+        email: row.authorEmail || '',
+        username: row.authorUsername || 'unknown',
+        password: '',
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      comments,
+      likes,
+      _count: {
+        comments: comments.length,
+        likes: likes.length,
+      },
+    };
   }
 
   async createPost(post: InsertPost): Promise<Post> {

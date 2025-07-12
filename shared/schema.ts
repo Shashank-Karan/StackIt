@@ -95,7 +95,8 @@ export const posts = pgTable("posts", {
   likes: integer("likes").default(0),
   shares: integer("shares").default(0),
   tags: text("tags").array().notNull().default([]),
-  imageUrl: varchar("image_url", { length: 500 }),
+  imageUrls: text("image_urls").array().notNull().default([]),
+  videoUrls: text("video_urls").array().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
