@@ -14,7 +14,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Session storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Used for user session management
 export const sessions = pgTable(
   "sessions",
   {
@@ -237,7 +237,7 @@ export const insertQuestionSchema = createInsertSchema(questions).omit({
   createdAt: true,
   updatedAt: true,
   votes: true,
-  viewCount: true,
+  views: true,
   acceptedAnswerId: true,
 });
 export const insertAnswerSchema = createInsertSchema(answers).omit({
