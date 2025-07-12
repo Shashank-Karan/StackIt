@@ -73,6 +73,18 @@ export default function QuestionDetail() {
     queryClient.invalidateQueries({ queryKey: [`/api/questions/${id}`] });
   };
 
+  const handleAskQuestion = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Login Required",
+        description: "Please login to ask a question",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsAskModalOpen(true);
+  };
+
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diff = now.getTime() - new Date(date).getTime();
@@ -143,18 +155,6 @@ export default function QuestionDetail() {
 
   const handleAcceptAnswer = (answerId: number) => {
     acceptAnswerMutation.mutate(answerId);
-  };
-
-  const handleAskQuestion = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Login Required",
-        description: "Please login to ask a question",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsAskModalOpen(true);
   };
 
   return (
