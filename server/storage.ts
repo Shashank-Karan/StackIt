@@ -116,6 +116,42 @@ export class DatabaseStorage implements IStorage {
     const { search, tags, filter, limit = 20, offset = 0 } = options;
 
     try {
+      // Build where conditions for search and filters
+      let whereConditions: any[] = [];
+
+      // Apply search filter
+      if (search && search.trim()) {
+        whereConditions.push(
+          or(
+            ilike(questions.title, `%${search.trim()}%`),
+            ilike(questions.description, `%${search.trim()}%`)
+          )
+        );
+      }
+
+      // Apply tag filter
+      if (tags && tags.length > 0) {
+        whereConditions.push(sql`${questions.tags} && ${tags}`);
+      }
+
+      // Apply specific filters
+      if (filter === "unanswered") {
+        whereConditions.push(
+          sql`NOT EXISTS (SELECT 1 FROM ${answers} WHERE ${answers.questionId} = ${questions.id})`
+        );
+      }
+
+      // Combine where conditions
+      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+      // Determine order by clause
+      let orderBy;
+      if (filter === "newest") {
+        orderBy = desc(questions.createdAt);
+      } else {
+        orderBy = desc(questions.createdAt); // default to newest
+      }
+
       // Simple query to avoid Drizzle relational issues
       const questionsData = await db
         .select({
@@ -135,7 +171,8 @@ export class DatabaseStorage implements IStorage {
         })
         .from(questions)
         .leftJoin(users, eq(questions.authorId, users.id))
-        .orderBy(desc(questions.createdAt))
+        .where(whereClause)
+        .orderBy(orderBy)
         .limit(limit)
         .offset(offset);
 
