@@ -65,7 +65,7 @@ Implement full-text search in PostgreSQL to search questions by title and tags u
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React with TypeScript
+- **Framework**: React with TypeScript (maintained for UI)
 - **Routing**: Wouter for client-side routing
 - **State Management**: TanStack Query for server state management
 - **UI Components**: Radix UI with shadcn/ui component library
@@ -73,13 +73,14 @@ Implement full-text search in PostgreSQL to search questions by title and tags u
 - **Rich Text Editor**: Tiptap for question/answer content creation
 - **Build Tool**: Vite with React plugin
 
-### Backend Architecture
-- **Runtime**: Node.js with Express.js
-- **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM
+### Backend Architecture - **CONVERTED TO PYTHON** (January 2025)
+- **Runtime**: Python 3.11 with Flask
+- **Language**: Python with type hints
+- **Database**: PostgreSQL with SQLAlchemy ORM
 - **Database Provider**: Neon Database (serverless PostgreSQL)
-- **Authentication**: Replit Auth with OpenID Connect
-- **Session Management**: Express sessions with PostgreSQL storage
+- **Authentication**: Flask sessions with password hashing
+- **Session Management**: Flask-Session with PostgreSQL storage
+- **AI Integration**: Google Gemini API for intelligent features
 
 ### Development Setup
 - **Monorepo Structure**: Shared schema between client and server

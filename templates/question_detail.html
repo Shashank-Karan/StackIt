@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{{ question.title }} - StackIt{% endblock %}
+
+{% block content %}
+<div class="card">
+    <!-- Question -->
+    <div class="question-item">
+        <div class="vote-section">
+            {% if current_user %}
+                <button class="vote-btn" onclick="vote('up', {{ question.id }}, null)">▲</button>
+            {% endif %}
+            <div class="vote-score" id="question-score-{{ question.id }}">{{ question.vote_score }}</div>
+            {% if current_user %}
+                <button class="vote-btn" onclick="vote('down', {{ question.id }}, null)">▼</button>
+            {% endif %}
+        </div>
+        
+        <div class="question-content">
+            <h1>{{ question.title }}</h1>
+            <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                {{ question.description|safe }}
+            </div>
+            
+            {% if question.get_tags() %}
+                <div class="tags">
+                    {% for tag in question.get_tags() %}
+                        <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="meta">
+                Asked {{ question.time_ago() }} by <strong>{{ question.author.get_full_name() }}</strong>
+                • {{ question.view_count }} views
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Answers -->
+<div class="card">
+    <h2>{{ answers|length }} Answer{{ 's' if answers|length != 1 else '' }}</h2>
+    
+    {% for answer in answers %}
+        <div class="answer {{ 'accepted' if answer.is_accepted }}">
+            <div class="answer-header">
+                <div style="display: flex; align-items: center;">
+                    <div class="vote-section" style="margin-right: 15px;">
+                        {% if current_user %}
+                            <button class="vote-btn" onclick="vote('up', null, {{ answer.id }})">▲</button>
+                        {% endif %}
+                        <div class="vote-score" id="answer-score-{{ answer.id }}">{{ answer.vote_score }}</div>
+                        {% if current_user %}
+                            <button class="vote-btn" onclick="vote('down', null, {{ answer.id }})">▼</button>
+                        {% endif %}
+                    </div>
+                    
+                    {% if answer.is_accepted %}
+                        <div style="color: #27ae60; font-weight: bold;">✓ Accepted Answer</div>
+                    {% elif current_user and current_user.id == question.author_id %}
+                        <a href="{{ url_for('accept_answer', answer_id=answer.id) }}" class="accept-btn">Accept Answer</a>
+                    {% endif %}
+                </div>
+                
+                <div class="meta">
+                    Answered {{ answer.time_ago() }} by <strong>{{ answer.author.get_full_name() }}</strong>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                {{ answer.content|safe }}
+            </div>
+        </div>
+    {% endfor %}
+    
+    {% if not answers %}
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <h3>No answers yet</h3>
+            <p>Be the first to answer this question!</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Answer Form -->
+{% if current_user %}
+    <div class="card">
+        <h2>Your Answer</h2>
+        <form method="POST" action="{{ url_for('post_answer', question_id=question.id) }}">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.content.label(class="form-label") }}
+                {{ form.content(class="form-control") }}
+                {% if form.content.errors %}
+                    <div class="alert alert-error">
+                        {% for error in form.content.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="form-actions">
+                {{ form.submit(class="btn btn-success") }}
+            </div>
+        </form>
+    </div>
+{% else %}
+    <div class="card">
+        <div style="text-align: center; padding: 20px; color: #666;">
+            <p>You need to <a href="{{ url_for('login') }}">login</a> to post an answer.</p>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+function vote(voteType, questionId, answerId) {
+    fetch('/vote', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            vote_type: voteType,
+            question_id: questionId,
+            answer_id: answerId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.new_score !== undefined) {
+            const scoreElement = document.getElementById(
+                questionId ? `question-score-${questionId}` : `answer-score-${answerId}`
+            );
+            if (scoreElement) {
+                scoreElement.textContent = data.new_score;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error voting. Please try again.');
+    });
+}
+</script>
+{% endblock %}
