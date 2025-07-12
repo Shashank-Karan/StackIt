@@ -171,7 +171,8 @@ export default function QuestionDetail() {
         onSearchChange={() => {}}
       />
       
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex">
+        <main className={`flex-1 px-4 sm:px-6 lg:px-8 py-8 ${isAuthenticated ? 'mr-96' : 'max-w-4xl mx-auto'}`}>
         {/* Back Button */}
         <Button 
           variant="ghost" 
@@ -362,36 +363,23 @@ export default function QuestionDetail() {
             )}
           </div>
         </div>
-      </main>
+        </main>
 
-      {/* Floating AI Chatbot Button */}
-      {isAuthenticated && (
-        <Button
-          onClick={() => setIsChatbotOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-50"
-          size="icon"
-        >
-          <Bot className="h-6 w-6" />
-        </Button>
-      )}
+        {/* AI Chatbot Sidebar */}
+        {isAuthenticated && (
+          <aside className="w-96 bg-white border-l border-gray-200 fixed right-0 top-16 bottom-0 overflow-hidden">
+            <div className="h-full">
+              <AIChatbot />
+            </div>
+          </aside>
+        )}
+      </div>
 
       {/* Ask Question Modal */}
       <AskQuestionModal
         isOpen={isAskModalOpen}
         onClose={() => setIsAskModalOpen(false)}
       />
-
-      {/* AI Chatbot Modal */}
-      <Dialog open={isChatbotOpen} onOpenChange={setIsChatbotOpen}>
-        <DialogContent className="max-w-2xl h-[80vh] p-0">
-          <DialogHeader className="p-6 pb-0">
-            <DialogTitle>AI Assistant</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 p-6 pt-2">
-            <AIChatbot />
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
