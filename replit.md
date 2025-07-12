@@ -73,17 +73,16 @@ Implement full-text search in PostgreSQL to search questions by title and tags u
 - **Rich Text Editor**: Tiptap for question/answer content creation
 - **Build Tool**: Vite with React plugin
 
-### Backend Architecture - **COMPLETE PYTHON IMPLEMENTATION** (January 2025)
-- **Runtime**: Python 3.11 with Flask
-- **Language**: Python with type hints and full Flask integration
-- **Database**: PostgreSQL with SQLAlchemy ORM
+### Backend Architecture - **Node.js/Express Implementation** (January 2025)
+- **Runtime**: Node.js with Express.js
+- **Language**: TypeScript with strict type checking
+- **Database**: PostgreSQL with Drizzle ORM
 - **Database Provider**: Neon Database (serverless PostgreSQL)  
-- **Authentication**: Flask sessions with bcrypt password hashing
-- **Session Management**: Flask-Session with secure session handling
-- **AI Integration**: Google Gemini API for intelligent features
-- **Forms**: Flask-WTF with WTForms for secure form handling
-- **Templates**: Jinja2 templates with built-in styling
-- **Application Structure**: Complete monolithic Flask application with all features
+- **Authentication**: Session-based authentication with bcrypt password hashing
+- **Session Management**: Express sessions with PostgreSQL session store
+- **Storage**: Abstracted storage layer with TypeScript interfaces
+- **API**: RESTful API with comprehensive endpoint coverage
+- **Application Structure**: Clean separation between frontend and backend
 
 ### Development Setup
 - **Monorepo Structure**: Shared schema between client and server
