@@ -5,6 +5,9 @@ const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY || "");
 
 export async function generateAIResponse(userMessage: string): Promise<string> {
   try {
+    console.log("Environment check - GEMINI_API_KEY exists:", !!process.env.GEMINI_API_KEY);
+    console.log("Environment check - GEMINI_API_KEY length:", process.env.GEMINI_API_KEY?.length || 0);
+    
     if (!process.env.GEMINI_API_KEY) {
       console.error("Gemini API key is not configured");
       throw new Error("Gemini API key is not configured");
