@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, Users, BookOpen, Star } from 'lucide-react';
+import { AuthModal } from '@/components/auth/auth-modal';
 
 export default function Landing() {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -12,7 +16,7 @@ export default function Landing() {
             <div className="flex items-center">
               <h1 className="text-2xl font-bold text-gray-900">StackIt</h1>
             </div>
-            <Button onClick={() => window.location.href = '/api/login'}>
+            <Button onClick={() => setShowAuthModal(true)}>
               Login
             </Button>
           </div>
@@ -34,7 +38,7 @@ export default function Landing() {
               <Button 
                 size="lg" 
                 className="w-full"
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => setShowAuthModal(true)}
               >
                 Get Started
               </Button>
@@ -186,7 +190,7 @@ export default function Landing() {
           </p>
           <Button 
             size="lg"
-            onClick={() => window.location.href = '/api/login'}
+            onClick={() => setShowAuthModal(true)}
           >
             Join StackIt Today
           </Button>
@@ -203,6 +207,8 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
 }
