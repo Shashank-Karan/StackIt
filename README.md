@@ -14,7 +14,6 @@
 
 # StackIt - AI-Powered Q&A Platform
 
-[![Built with Replit](https://img.shields.io/badge/Built%20with-Replit-orange)](https://replit.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -122,7 +121,7 @@ stackit/
 
 ### Installation
 
-1. **Clone the repository** (or fork on Replit)
+1. **Clone the repository** (fork or clone)
    ```bash
    git clone <your-repo-url>
    cd stackit
@@ -153,15 +152,6 @@ stackit/
    ```
 
 The application will be available at `http://localhost:5000`
-
-### On Replit
-
-1. **Fork this Repl** or create a new one
-2. **Set up Secrets** in the Replit sidebar:
-   - `DATABASE_URL`: Your Neon PostgreSQL connection string
-   - `GEMINI_API_KEY`: Your Google Gemini API key
-   - `SESSION_SECRET`: A secure random string
-3. **Click the Run button** - everything else is configured!
 
 ## 🔧 Configuration
 
@@ -264,11 +254,6 @@ The application is fully responsive and optimized for:
 
 ## 🚀 Deployment
 
-### Replit Deployment (Recommended)
-1. Configure your Repl with the environment variables
-2. Click the "Deploy" button in Replit
-3. Your app will be live at `https://your-repl-name.your-username.repl.co`
-
 ### Build Commands
 ```bash
 # Development
@@ -341,7 +326,6 @@ PORT=5000
 - [TipTap](https://tiptap.dev/) for the rich text editor
 - [Neon](https://neon.tech/) for serverless PostgreSQL
 - [Google Gemini](https://ai.google.dev/) for AI capabilities
-- [Replit](https://replit.com/) for the amazing development platform
 
 ### Upcoming Features
 - [ ] Real-time chat between users
