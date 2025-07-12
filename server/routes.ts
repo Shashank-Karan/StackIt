@@ -325,6 +325,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       const { questionId, answerId, voteType } = req.body;
+      
+      console.log('Vote request body:', req.body);
+      console.log('Parsed values:', { questionId, answerId, voteType });
 
       // Check if user already voted
       const existingVote = await storage.getVote(user.id, questionId, answerId);

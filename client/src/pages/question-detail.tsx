@@ -182,10 +182,13 @@ export default function QuestionDetail() {
             <div className="flex items-start space-x-4">
               {/* Voting Buttons */}
               <VotingButtons
-                type="question"
+                itemType="question"
                 itemId={question.id}
-                score={question.voteScore}
-                className="flex-shrink-0"
+                votes={question.votes || 0}
+                onVoteSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
+                  queryClient.invalidateQueries({ queryKey: [`/api/questions/${question.id}`] });
+                }}
               />
 
               {/* Question Content */}
@@ -282,10 +285,13 @@ export default function QuestionDetail() {
                     <div className="flex items-start space-x-4">
                       {/* Voting Buttons */}
                       <VotingButtons
-                        type="answer"
+                        itemType="answer"
                         itemId={answer.id}
-                        score={answer.voteScore}
-                        className="flex-shrink-0"
+                        votes={answer.votes || 0}
+                        onVoteSuccess={() => {
+                          queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
+                          queryClient.invalidateQueries({ queryKey: [`/api/questions/${question.id}`] });
+                        }}
                       />
 
                       {/* Answer Content */}
