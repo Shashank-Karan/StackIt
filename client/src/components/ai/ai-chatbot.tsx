@@ -88,14 +88,7 @@ export function AIChatbot() {
   };
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Bot className="h-5 w-5 text-blue-600" />
-          AI Assistant
-        </CardTitle>
-      </CardHeader>
-      
+    <div className="h-full flex flex-col">
       <CardContent className="flex flex-col h-full p-4">
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-4">
@@ -166,6 +159,6 @@ export function AIChatbot() {
           </Button>
         </div>
       </CardContent>
-    </Card>
+    </div>
   );
 }
