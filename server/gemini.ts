@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize Gemini AI
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY || "");
 
 export async function generateAIResponse(userMessage: string): Promise<string> {
   try {
@@ -20,14 +20,12 @@ export async function generateAIResponse(userMessage: string): Promise<string> {
     If the question is general knowledge, provide factual information.
     Always be polite and professional in your response.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const response = await model.generateContent(prompt);
 
     console.log("Gemini API response received successfully");
     
-    const responseText = response.text;
+    const responseText = response.response.text();
     if (!responseText) {
       console.error("Empty response from Gemini API");
       return "I'm sorry, I couldn't generate a response at the moment. Please try again.";
