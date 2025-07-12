@@ -164,7 +164,23 @@ export function Header({ onAskQuestion, onOpenChatbot, searchQuery, onSearchChan
                       <DropdownMenuSeparator className="bg-border/50" />
                       <DropdownMenuItem 
                         className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        onClick={() => window.location.href = '/api/logout'}
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/auth/logout', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                            });
+                            if (response.ok) {
+                              // Clear the auth query cache and force refresh
+                              window.location.href = '/';
+                            }
+                          } catch (error) {
+                            console.error('Logout failed:', error);
+                            window.location.href = '/api/logout';
+                          }
+                        }}
                       >
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Log out</span>

@@ -55,6 +55,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // GET logout route for convenience (redirects to home)
+  app.get('/api/logout', (req, res) => {
+    req.session!.destroy((err) => {
+      if (err) {
+        console.error("Error destroying session:", err);
+      }
+      res.redirect('/');
+    });
+  });
+
   app.get('/api/auth/user', async (req, res) => {
     try {
       const user = req.session?.user;
