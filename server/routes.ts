@@ -344,8 +344,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new vote
       const voteData = insertVoteSchema.parse({
         userId: user.id,
-        questionId,
-        answerId,
+        questionId: questionId || null,
+        answerId: answerId || null,
         voteType,
       });
 

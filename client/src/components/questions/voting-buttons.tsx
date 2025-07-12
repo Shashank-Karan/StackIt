@@ -23,7 +23,8 @@ export function VotingButtons({ itemId, itemType, votes, onVoteSuccess }: Voting
     mutationFn: async (voteType: 'up' | 'down') => {
       const voteData = {
         voteType,
-        [itemType === 'question' ? 'questionId' : 'answerId']: itemId,
+        questionId: itemType === 'question' ? itemId : null,
+        answerId: itemType === 'answer' ? itemId : null,
       };
       const response = await apiRequest('POST', '/api/votes', voteData);
       return response.json();

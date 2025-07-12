@@ -19,7 +19,7 @@ import {
   type NotificationWithQuestion,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, sql, and, or, ilike, count, inArray } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, ilike, count, inArray, isNull } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -440,16 +440,18 @@ export class DatabaseStorage implements IStorage {
 
   // Vote operations
   async getVote(userId: number, questionId?: number, answerId?: number): Promise<Vote | undefined> {
-    let query = db.select().from(votes).where(eq(votes.userId, userId));
+    let conditions = [eq(votes.userId, userId)];
 
     if (questionId) {
-      query = query.where(eq(votes.questionId, questionId));
+      conditions.push(eq(votes.questionId, questionId));
+      conditions.push(isNull(votes.answerId));
     }
     if (answerId) {
-      query = query.where(eq(votes.answerId, answerId));
+      conditions.push(eq(votes.answerId, answerId));
+      conditions.push(isNull(votes.questionId));
     }
 
-    const [vote] = await query;
+    const [vote] = await db.select().from(votes).where(and(...conditions));
     return vote;
   }
 
